@@ -1,0 +1,11 @@
+{
+  "name": "factorio-polska",
+  "version": "0.2.65",
+  "title": "Factorio Polska",
+  "author": "rithien",
+  "contact": "jacek@zaluzje.bialystok.pl",
+  "homepage": "https://github.com/rithien/factorio-polska",
+  "description": "Lekki scenariusz z anti-griefem (cherry-pick z ComfyFactorio), auto-trust po 3h, integracją Discord przez clusterio",
+  "factorio_version": "2.0",
+  "dependencies": []
+}

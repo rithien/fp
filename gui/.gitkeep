@@ -1,0 +1,3 @@
+# Tags-based GUI framework (Faza 2.3).
+# `gui/init.lua` — Gui.add wrapper, dispatch po event.element.tags.action.
+# `gui/antigrief_panel.lua` — panel admina z 11 historiami zdarzeń.
