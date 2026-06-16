@@ -86,8 +86,9 @@ local function on_entity_died(event)
     if combat_recreate(event) then return end
     local cause = event.cause
     local name
-    if (cause and cause.name == 'character' and cause.player and cause.force.name == event.entity.force.name) then
-        local player = cause.player
+    local attacker = resolve_combat_attacker(cause)
+    if attacker and cause.force.name == event.entity.force.name then
+        local player = attacker
         if is_logging_muted_for(player) then return end
         name = player.name
         if not this.friendly_fire_history then
@@ -138,7 +139,7 @@ local function on_entity_died(event)
                 return
             end
         end
-        if cause and cause.name == 'character' and cause.player and is_logging_muted_for(cause.player) then
+        if attacker and is_logging_muted_for(attacker) then
             return
         end
         if not this.friendly_fire_history then
@@ -150,8 +151,8 @@ local function on_entity_died(event)
         local t = abs(floor((game.tick) / 60))
         local formatted = FancyTime.short_fancy_time(t)
         local str = '[' .. formatted .. '] '
-        if cause and cause.name == 'character' and cause.player then
-            str = str .. cause.player.name .. ' destroyed '
+        if attacker then
+            str = str .. attacker.name .. ' destroyed '
         else
             str = str .. 'someone destroyed '
         end
@@ -162,9 +163,9 @@ local function on_entity_died(event)
         str = str .. floor(event.entity.position.y)
         str = str .. ' '
         str = str .. 'surface:' .. event.entity.surface.index
-        if cause and cause.name == 'character' and cause.player then
+        if attacker then
             increment(this.friendly_fire_history, str)
-            Server.log_antigrief_data('friendly_fire', str, nil, cause.player.name)
+            Server.log_antigrief_data('friendly_fire', str, nil, attacker.name)
         else
             increment(this.friendly_fire_history, str)
             Server.log_antigrief_data('friendly_fire', str)

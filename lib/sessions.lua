@@ -104,9 +104,8 @@ local try_upload_data_token = Token.register(function(data)
     end
     local new_time = old_time_ingame + player.online_time - storage.online_track[player_name]
     if new_time <= 0 then
-        new_time = old_time_ingame + player.online_time
+        log('[sessions] ' .. player_name .. ' computed non-positive delta (' .. new_time .. '), tracker reset')
         storage.online_track[player_name] = 0
-        log('[sessions] ' .. player_name .. ' had new time set as negative value: ' .. new_time)
         return
     end
     if new_time > Public.get_trusted_threshold() and not storage.manually_untrusted[player_name] then

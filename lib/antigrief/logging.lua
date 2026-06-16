@@ -116,6 +116,7 @@ local function on_console_command(event)
         return
     end
     local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end 
     if is_logging_muted_for(player) then return end
     if not this.whisper_history then
         this.whisper_history = {}

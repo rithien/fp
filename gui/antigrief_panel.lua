@@ -304,6 +304,15 @@ Gui.on_click(CLOSE_ACTION, function(_, player)
     end
     Gui.destroy_if_exists(player.gui.screen, PANEL_FRAME_NAME)
 end)
+Event.add(de.on_gui_closed, function(event)
+    local element = event.element
+    if not element or not element.valid then
+        return
+    end
+    if element.name == PANEL_FRAME_NAME then
+        element.destroy()
+    end
+end)
 Gui.on_switch_state_changed(ENABLED_SWITCH_ACTION, function(event, player)
     if not player or not player.valid or not player.admin then
         return

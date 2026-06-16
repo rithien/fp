@@ -116,8 +116,8 @@ local function on_player_used_capsule(event)
     if player.admin then 
         return
     end
-    if this.do_not_check_trusted then
-        return
+    if Session.get_trusted_player(player) or this.do_not_check_trusted then
+        return 
     end
     local item = event.item
     if not item then

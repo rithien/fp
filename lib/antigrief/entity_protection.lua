@@ -45,8 +45,15 @@ local create_ghost_token =
                 return
             end
             local ghost = event.ghost
+            if not ghost or not ghost.valid then
+                return
+            end
             local position = event.position
-            ghost.clone({ position = position, force = player.force, surface = player.surface, create_build_effect_smoke = false })
+            local surface = event.surface_index and game.get_surface(event.surface_index) or nil
+            if not (surface and surface.valid) then
+                surface = player.surface
+            end
+            ghost.clone({ position = position, force = player.force, surface = surface, create_build_effect_smoke = false })
             ghost.destroy()
         end,
         true
@@ -86,7 +93,7 @@ local function on_pre_ghost_deconstructed(event)
             game.create_surface('gulag', { width = 32, height = 32 })
         end
         local new_ghost = ghost.clone({ position = { x = 0, y = 0 }, force = player.force, surface = game.surfaces.gulag, create_build_effect_smoke = false })
-        Task.set_timeout_in_ticks(AG.create_ghost_delay_ticks, create_ghost_token, { player_index = player.index, ghost = new_ghost, position = ghost.position })
+        Task.set_timeout_in_ticks(AG.create_ghost_delay_ticks, create_ghost_token, { player_index = player.index, ghost = new_ghost, position = ghost.position, surface_index = ghost.surface.index })
         hard_block_action(player, 'deconstruct',
             format(AUDIT.deconstruct_ghost, ghost.ghost_name or ghost.name, get_owner_name(ghost)))
         return

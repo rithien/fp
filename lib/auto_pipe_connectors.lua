@@ -199,7 +199,7 @@ local function on_built_entity(event)
         end
         ::bail_neighbor_entities::
         if place then
-            if not placing_ghost then
+            if pipe_entity_definition.name ~= 'entity-ghost' then
                 if inventory then
                     inventory.remove({ name = pipe_item_name })
                 else

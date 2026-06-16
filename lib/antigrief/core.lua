@@ -158,6 +158,21 @@ local function damage_player(player, kill, print_to_all)
         end
     end
 end
+local clear_capsule_warning_token =
+    Token.register(
+        function(event)
+            local player_index = event.player_index
+            local scheduled_tick = event.scheduled_tick
+            if not this.players_warned then return end
+            local entry = this.players_warned[player_index]
+            if type(entry) ~= 'table' then
+                this.players_warned[player_index] = nil
+                return
+            end
+            if entry.last_tick ~= scheduled_tick then return end
+            this.players_warned[player_index] = nil
+        end
+    )
 local function do_action(player, action_prefix, msg, ban_msg, kill)
     if not action_prefix or not msg or not ban_msg then
         return
@@ -165,20 +180,27 @@ local function do_action(player, action_prefix, msg, ban_msg, kill)
     kill = kill or false
     damage_player(player, kill)
     action_warning(action_prefix, msg)
-    if this.players_warned[player.index] == 2 then
+    local idx = player.index
+    local entry = this.players_warned[idx]
+    local count = (type(entry) == 'table' and entry.count) or (type(entry) == 'number' and entry) or 0
+    if count == 2 then
         if this.enable_autoban then
             game.ban_player(player.name, ban_msg) 
         end
-    elseif this.players_warned[player.index] == 1 then
-        this.players_warned[player.index] = 2
+    elseif count == 1 then
+        count = 2
         if this.enable_jail then
             game.ban_player(player.name, msg) 
         elseif this.enable_autokick then
             game.kick_player(player, msg)
         end
     else
-        this.players_warned[player.index] = 1
+        count = 1
     end
+    local now = game.tick
+    this.players_warned[idx] = { count = count, last_tick = now }
+    Task.set_timeout_in_ticks(AG.strike_ttl_ticks, clear_capsule_warning_token,
+        { player_index = idx, scheduled_tick = now })
 end
 local clear_hard_block_warning_token =
     Token.register(
