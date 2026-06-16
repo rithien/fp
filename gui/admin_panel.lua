@@ -399,7 +399,7 @@ Event.on_configuration_changed(function()
     end
 end)
 local function apply_config_defaults()
-    Config.reset_to_defaults()
+    Config.ensure_defaults()
     local cfg_ids = {}
     for cfg_id, _ in Config.iter_defaults() do cfg_ids[cfg_id] = true end
     for _, def in ipairs(toggles) do
