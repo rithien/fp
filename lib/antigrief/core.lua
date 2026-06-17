@@ -16,7 +16,7 @@ local prefix = '## - '
 local Core = {}
 local function get_defaults()
     return {
-        enabled = true,
+        enabled = false,
         max_count_decon = 1500,
         landfill_history = {},
         capsule_history = {},
