@@ -14,6 +14,7 @@ return {
     car_finder       = true,   
     feedback         = true,   
     circuit_highlight = true,  
+    inserter_throughput = true, 
     bp_params        = false,   
     debug_log        = false,  
 }
