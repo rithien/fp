@@ -46,7 +46,7 @@ ChunkJobs.register('regenerate_resources',
                 solid_finite[#solid_finite + 1] = resource
             end
         end
-        local ok, err = pcall(surface.regenerate_entity, surface, solid_finite)
+        local ok, err = pcall(function() surface.regenerate_entity(solid_finite) end)
         local stats = job and job.extra
         DebugLog.log('[regenerate_resources] %s: reset_infinite=%d destroyed_solid=%d skipped_fluid=%d skipped_no_autoplace=%d → regenerate(%s) %d prototypów: %s',
             surface.name,
