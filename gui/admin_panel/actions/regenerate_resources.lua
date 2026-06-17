@@ -14,6 +14,11 @@ local function yields_fluid(prototype)
     end
     return false
 end
+local function should_regenerate(prototype)
+    return not prototype.infinite_resource
+        and prototype.autoplace_specification ~= nil
+        and not yields_fluid(prototype)
+end
 ChunkJobs.register('regenerate_resources',
     function(surface, _force, cx, cy, stats)
         local area = { { cx * SIZE, cy * SIZE }, { cx * SIZE + SIZE, cy * SIZE + SIZE } }
@@ -23,11 +28,13 @@ ChunkJobs.register('regenerate_resources',
                 if proto.infinite_resource then
                     e.amount = e.initial_amount                 
                     if stats then stats.reset = stats.reset + 1 end
-                elseif yields_fluid(proto) then
-                    if stats then stats.skipped_fluid = stats.skipped_fluid + 1 end 
-                else
+                elseif should_regenerate(proto) then
                     e.destroy()                                 
                     if stats then stats.destroyed = stats.destroyed + 1 end
+                elseif yields_fluid(proto) then
+                    if stats then stats.skipped_fluid = stats.skipped_fluid + 1 end          
+                else
+                    if stats then stats.skipped_no_autoplace = stats.skipped_no_autoplace + 1 end 
                 end
             end
         end
@@ -35,17 +42,19 @@ ChunkJobs.register('regenerate_resources',
     function(surface, _force, player, job)
         local solid_finite = {}
         for resource, prototype in pairs(prototypes.get_entity_filtered({ { filter = 'type', type = 'resource' } })) do
-            if not prototype.infinite_resource and not yields_fluid(prototype) then
+            if should_regenerate(prototype) then
                 solid_finite[#solid_finite + 1] = resource
             end
         end
-        surface.regenerate_entity(solid_finite)
+        local ok, err = pcall(surface.regenerate_entity, surface, solid_finite)
         local stats = job and job.extra
-        DebugLog.log('[regenerate_resources] %s: reset_infinite=%d skipped_fluid=%d destroyed_solid=%d → regenerate %d prototypów: %s',
+        DebugLog.log('[regenerate_resources] %s: reset_infinite=%d destroyed_solid=%d skipped_fluid=%d skipped_no_autoplace=%d → regenerate(%s) %d prototypów: %s',
             surface.name,
             stats and stats.reset or -1,
-            stats and stats.skipped_fluid or -1,
             stats and stats.destroyed or -1,
+            stats and stats.skipped_fluid or -1,
+            stats and stats.skipped_no_autoplace or -1,
+            ok and 'OK' or ('BŁĄD: ' .. tostring(err)),
             #solid_finite,
             #solid_finite > 0 and table.concat(solid_finite, ', ') or '(brak)')
         if DebugLog.is_enabled() then 
@@ -94,7 +103,7 @@ AdminPanel.register_action({
     tooltip = { 'fp-admin.regenerate-resources-tooltip' },
     on_click = function(player)
         local queued, total = ChunkJobs.enqueue(player, 'regenerate_resources', {
-            extra = { reset = 0, skipped_fluid = 0, destroyed = 0 },
+            extra = { reset = 0, destroyed = 0, skipped_fluid = 0, skipped_no_autoplace = 0 },
         })
         if not queued then
             player.print({ 'fp-admin.regenerate-resources-busy' })
