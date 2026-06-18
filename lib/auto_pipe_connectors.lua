@@ -95,9 +95,9 @@ local function on_built_entity(event)
     end
     local lookup_entry = storage.auto_pipe_connectors.pipe_lookup[underground_entity_name]
     if not lookup_entry then
-        DebugLog.log('[auto_pipe_connectors]   BAIL: brak wpisu w pipe_lookup dla "%s" — ta podziemna rura nie ' ..
-            'pasuje do wzorca recepty (recepta produkująca pipe-to-ground ze zwykłym `pipe` jako składnikiem). ' ..
-            'Porównaj z logiem "pipe_lookup zbudowany" — jeśli rury tam nie ma, to jest właśnie przyczyna braku łączenia.',
+        DebugLog.log('[auto_pipe_connectors]   BAIL: brak wpisu w pipe_lookup dla "%s" — ani recepturowy lookup, ' ..
+            'ani fallback po prototypach nie dobrały zwykłej rury. Sprawdź log "pipe_lookup zbudowany" oraz linie ' ..
+            '"fallback" przy odbudowie indeksu (czy w grze istnieje stawialna encja typu pipe).',
             tostring(underground_entity_name))
         return
     end 
@@ -341,6 +341,47 @@ function rebuild_index()
                 underground_recipe_prototype.name, tostring(underground_entity_name))
         end
         ::continue_underground_recipe_prototype::
+    end
+    local placeable_pipes = {}
+    for _, p in pairs(prototypes.get_entity_filtered({ { filter = 'type', type = 'pipe' } })) do
+        local items = p.items_to_place_this
+        if items and items[1] then
+            placeable_pipes[#placeable_pipes + 1] = {
+                entity = p.name, item = items[1].name, subgroup = p.subgroup and p.subgroup.name or nil,
+            }
+        end
+    end
+    if #placeable_pipes > 0 then
+        for _, ug in pairs(prototypes.get_entity_filtered({ { filter = 'type', type = 'pipe-to-ground' } })) do
+            if not lookup[ug.name] then
+                local chosen
+                if #placeable_pipes == 1 then
+                    chosen = placeable_pipes[1] 
+                else
+                    local ug_sub = ug.subgroup and ug.subgroup.name or nil
+                    local sub_match, sub_count = nil, 0
+                    for _, pp in pairs(placeable_pipes) do
+                        if ug_sub and pp.subgroup == ug_sub then sub_count = sub_count + 1; sub_match = pp end
+                    end
+                    if sub_count == 1 then
+                        chosen = sub_match
+                    else
+                        local stem = ug.name:gsub('underground%-?', ''):gsub('%-?to%-?ground$', '')
+                        for _, pp in pairs(placeable_pipes) do
+                            if pp.entity == stem then chosen = pp; break end
+                        end
+                    end
+                end
+                if chosen then
+                    lookup[ug.name] = { item = chosen.item, entity = chosen.entity }
+                    DebugLog.log('[auto_pipe_connectors]   fallback (po prototypach): "%s" → item="%s" entity="%s"',
+                        ug.name, chosen.item, chosen.entity)
+                else
+                    DebugLog.log('[auto_pipe_connectors]   fallback: "%s" — brak jednoznacznej zwykłej rury ' ..
+                        '(%d kandydatów typu pipe o różnych subgroup/nazwach) — pomijam.', ug.name, #placeable_pipes)
+                end
+            end
+        end
     end
     s.index_built = true
     local n = 0
