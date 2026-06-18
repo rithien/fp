@@ -3,6 +3,7 @@ local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local de = defines.events
 local TOGGLE_ID = 'auto_pipe_connectors'
+local LOOKUP_CODE_VERSION = 2
 local direction_vectors = {
     [defines.direction.north] = { 0, -1 },
     [defines.direction.east]  = { 1, 0 },
@@ -83,7 +84,8 @@ local function on_built_entity(event)
             TOGGLE_ID, tostring(Config.is_enabled(TOGGLE_ID)), tostring(is_user_enabled(event.player_index)))
         return
     end
-    if not storage.auto_pipe_connectors.index_built then rebuild_index() end
+    local apc_storage = storage.auto_pipe_connectors
+    if not apc_storage.index_built or apc_storage.lookup_code_version ~= LOOKUP_CODE_VERSION then rebuild_index() end
     local underground_entity_name
     local placing_ghost
     if entity.type == 'entity-ghost' then
@@ -299,6 +301,7 @@ function rebuild_index()
         return
     end
     s.index_rebuilt_tick = game.tick
+    s.pipe_lookup = {}
     local lookup = s.pipe_lookup
     local underground_recipe_prototypes = prototypes.get_recipe_filtered({
         { filter = 'has-product-item', elem_filters = { { filter = 'place-result', elem_filters = { { filter = 'type', type = 'pipe-to-ground' } } } } },
@@ -384,6 +387,7 @@ function rebuild_index()
         end
     end
     s.index_built = true
+    s.lookup_code_version = LOOKUP_CODE_VERSION
     local n = 0
     for _ in pairs(lookup) do n = n + 1 end
     log('[auto_pipe_connectors] pipe_lookup zbudowany: ' .. n .. ' wpisów (mapowanie pipe-to-ground → pipe).')
