@@ -1,5 +1,6 @@
 local Event = require 'lib.event'
 local Config = require 'lib.config'
+local DebugLog = require 'lib.debug_log'
 local de = defines.events
 local TOGGLE_ID = 'auto_pipe_connectors'
 local direction_vectors = {
@@ -70,8 +71,18 @@ local function on_built_entity(event)
     local entity = event.entity
     if not entity or not entity.valid then return end
     if entity_type_or_ghost_type(entity) ~= 'pipe-to-ground' then return end
-    if not event.player_index then return end
-    if not is_active_for(event.player_index) then return end
+    DebugLog.log('[auto_pipe_connectors] on_built: pipe-to-ground (ghost=%s) surface="%s" player_index=%s name="%s"',
+        tostring(entity.type == 'entity-ghost'), entity.surface.name, tostring(event.player_index),
+        entity.type == 'entity-ghost' and entity.ghost_name or entity.name)
+    if not event.player_index then
+        DebugLog.log('[auto_pipe_connectors]   BAIL: brak player_index (build script-raised / robot) — handler obsługuje tylko buildy gracza.')
+        return
+    end
+    if not is_active_for(event.player_index) then
+        DebugLog.log('[auto_pipe_connectors]   BAIL: gate OFF — master(%s)=%s user_enabled=%s',
+            TOGGLE_ID, tostring(Config.is_enabled(TOGGLE_ID)), tostring(is_user_enabled(event.player_index)))
+        return
+    end
     if not storage.auto_pipe_connectors.index_built then rebuild_index() end
     local underground_entity_name
     local placing_ghost
@@ -83,21 +94,39 @@ local function on_built_entity(event)
         underground_entity_name = entity.name
     end
     local lookup_entry = storage.auto_pipe_connectors.pipe_lookup[underground_entity_name]
-    if not lookup_entry then return end 
+    if not lookup_entry then
+        DebugLog.log('[auto_pipe_connectors]   BAIL: brak wpisu w pipe_lookup dla "%s" — ta podziemna rura nie ' ..
+            'pasuje do wzorca recepty (recepta produkująca pipe-to-ground ze zwykłym `pipe` jako składnikiem). ' ..
+            'Porównaj z logiem "pipe_lookup zbudowany" — jeśli rury tam nie ma, to jest właśnie przyczyna braku łączenia.',
+            tostring(underground_entity_name))
+        return
+    end 
+    DebugLog.log('[auto_pipe_connectors]   lookup OK: underground="%s" → pipe_item="%s" pipe_entity="%s"',
+        underground_entity_name, lookup_entry.item, lookup_entry.entity)
     local underground_surface = entity.surface
     local underground_direction = entity.direction
     local underground_position = entity.position
     local neighbors_directions = directions_to_neighbors[underground_direction]
     local pipe_position_delta = direction_vectors[underground_direction]
-    if not neighbors_directions or not pipe_position_delta then return end 
+    if not neighbors_directions or not pipe_position_delta then
+        DebugLog.log('[auto_pipe_connectors]   BAIL: kierunek=%s nie jest kardynalny (N/E/S/W) — ' ..
+            'modowana/diagonalna rura podziemna nieobsługiwana przez geometrię łącznika.', tostring(underground_direction))
+        return
+    end 
     local pipe_item_name = lookup_entry.item
     local pipe_entity_name = lookup_entry.entity
     local pipe_position = {
         underground_position.x + pipe_position_delta[1],
         underground_position.y + pipe_position_delta[2],
     }
+    DebugLog.log('[auto_pipe_connectors]   underground pos=(%.1f,%.1f) dir=%s → łącznik kandydat pos=(%.1f,%.1f)',
+        underground_position.x, underground_position.y, tostring(underground_direction), pipe_position[1], pipe_position[2])
     local player = game.get_player(event.player_index)
-    if not player or not player.valid then return end
+    if not player or not player.valid then
+        DebugLog.log('[auto_pipe_connectors]   BAIL: gracz %s nieprawidłowy/rozłączony.', tostring(event.player_index))
+        return
+    end
+    DebugLog.log('[auto_pipe_connectors]   gracz="%s" force="%s"', player.name, tostring(entity.force.name))
     local inventory = player.get_main_inventory()
     local pipe_stack
     if not placing_ghost then
@@ -108,12 +137,17 @@ local function on_built_entity(event)
             placing_ghost = true
         end
     end
+    DebugLog.log('[auto_pipe_connectors]   placing_ghost=%s (true = brak itemu "%s" w ekwipunku → stawiamy ghost)',
+        tostring(placing_ghost), pipe_item_name)
     local place_tile = false
     local existing_tile = underground_surface.get_tile(pipe_position[1], pipe_position[2])
     local cover_tile = existing_tile.prototype.default_cover_tile
     local tile_ghost_definition
     if cover_tile then
+        DebugLog.log('[auto_pipe_connectors]   pole pod łącznikiem wymaga podłoża: tile="%s" cover_tile="%s"',
+            existing_tile.name, cover_tile.name)
         if cover_tile.name == 'ice-platform' then
+            DebugLog.log('[auto_pipe_connectors]   BAIL: cover_tile=ice-platform nieobsługiwany (TODO w oryginalnym modzie).')
             return
         end
         placing_ghost = true
@@ -132,6 +166,8 @@ local function on_built_entity(event)
                 build_check_type = defines.build_check_type.script_ghost,
             }
             if not underground_surface.can_place_entity(tile_ghost_definition) then
+                DebugLog.log('[auto_pipe_connectors]   BAIL: can_place_entity(tile-ghost "%s") = false na (%.1f,%.1f).',
+                    cover_tile.name, pipe_position[1], pipe_position[2])
                 return
             end
         end
@@ -150,12 +186,18 @@ local function on_built_entity(event)
         pipe_entity_definition.inner_name = pipe_entity_name
     end
     if not underground_surface.can_place_entity(pipe_entity_definition) then
+        DebugLog.log('[auto_pipe_connectors]   BAIL: can_place_entity("%s", ghost=%s) = false na (%.1f,%.1f) — ' ..
+            'pole zablokowane (kolizja) ALBO mieszanie płynów. Częsty powód na modowanych mapach.',
+            pipe_entity_definition.name, tostring(placing_ghost), pipe_position[1], pipe_position[2])
         return
     end
     if placing_ghost then
         local found_entities = underground_surface.find_entities({ pipe_entity_definition.position, pipe_entity_definition.position })
         for _, found_entity in pairs(found_entities) do
             if found_entity.type ~= 'tile-ghost' then
+                DebugLog.log('[auto_pipe_connectors]   BAIL: na (%.1f,%.1f) jest już encja "%s" (type=%s) — ' ..
+                    'nie nadpisujemy jej ghostem łącznika.', pipe_position[1], pipe_position[2],
+                    found_entity.name, found_entity.type)
                 return
             end
         end
@@ -164,21 +206,31 @@ local function on_built_entity(event)
         local ghost = underground_surface.find_entity('entity-ghost', pipe_entity_definition.position)
         if ghost and ghost.ghost_name == pipe_entity_name then
         else
+            DebugLog.log('[auto_pipe_connectors]   BAIL: can_fast_replace=true na (%.1f,%.1f) (ghost tam=%s) — ' ..
+                'coś, co nasz łącznik by fast-replace\'ował (zawór/inna rura), nie ruszamy.',
+                pipe_position[1], pipe_position[2], ghost and ghost.ghost_name or 'brak')
             return
         end
     end
+    local matched = false 
     for _, neighbor_candidate in pairs(neighbors_directions) do
         local candidate_pos = { underground_position.x + neighbor_candidate.pos[1], underground_position.y + neighbor_candidate.pos[2] }
         local place = false
+        DebugLog.log('[auto_pipe_connectors]     sprawdzam kandydata sąsiada pos=(%.1f,%.1f) oczekiwany dir=%s',
+            candidate_pos[1], candidate_pos[2], tostring(neighbor_candidate.dir))
         local neighbor_entity = underground_surface.find_entity(underground_entity_name, candidate_pos)
         if neighbor_entity and neighbor_entity.name == underground_entity_name and neighbor_entity.direction == neighbor_candidate.dir then
             place = true
+            DebugLog.log('[auto_pipe_connectors]       MATCH: podziemna rura "%s" dir=%s na (%.1f,%.1f).',
+                underground_entity_name, tostring(neighbor_candidate.dir), candidate_pos[1], candidate_pos[2])
         end
         if not place then
             local neighbor_ghost = underground_surface.find_entity('entity-ghost', candidate_pos)
             if neighbor_ghost and neighbor_ghost.ghost_name == underground_entity_name and neighbor_ghost.direction == neighbor_candidate.dir then
                 place = true
                 placing_ghost = true
+                DebugLog.log('[auto_pipe_connectors]       MATCH: ghost podziemnej rury "%s" dir=%s na (%.1f,%.1f).',
+                    underground_entity_name, tostring(neighbor_candidate.dir), candidate_pos[1], candidate_pos[2])
             end
         end
         if not place then
@@ -191,6 +243,8 @@ local function on_built_entity(event)
                 if (entity_type ~= 'pipe' and entity_type ~= 'pipe-to-ground') and (ne.fluidbox and #ne.fluidbox > 0) then
                     if should_place_based_on_neighbor_fluidbox_prototypes(ne, pipe_position) then
                         place = true
+                        DebugLog.log('[auto_pipe_connectors]       MATCH: encja z fluidboxem "%s" (type=%s) ma połączenie rurowe w (%.1f,%.1f).',
+                            ne.name, entity_type, pipe_position[1], pipe_position[2])
                         goto bail_neighbor_entities
                     end
                 end
@@ -199,6 +253,7 @@ local function on_built_entity(event)
         end
         ::bail_neighbor_entities::
         if place then
+            matched = true
             if pipe_entity_definition.name ~= 'entity-ghost' then
                 if inventory then
                     inventory.remove({ name = pipe_item_name })
@@ -210,12 +265,31 @@ local function on_built_entity(event)
             local tile_failed = false
             if place_tile then
                 tile_failed = not underground_surface.create_entity(tile_ghost_definition)
+                if tile_failed then
+                    DebugLog.log('[auto_pipe_connectors]   UWAGA: create_entity(tile-ghost "%s") nie powiódł się — łącznika nie stawiamy.',
+                        cover_tile and cover_tile.name or '?')
+                end
             end
             if not tile_failed then
-                underground_surface.create_entity(pipe_entity_definition)
+                local created = underground_surface.create_entity(pipe_entity_definition)
+                if created then
+                    DebugLog.log('[auto_pipe_connectors]   OK: postawiono łącznik %s "%s" na (%.1f,%.1f).',
+                        pipe_entity_definition.name == 'entity-ghost' and 'GHOST' or 'REAL',
+                        pipe_entity_name, pipe_position[1], pipe_position[2])
+                else
+                    DebugLog.log('[auto_pipe_connectors]   UWAGA: create_entity(%s "%s") zwrócił nil mimo can_place_entity=true ' ..
+                        'na (%.1f,%.1f) — łącznika NIE postawiono (kolizja w czasie budowy / mieszanie płynów / inny mod).',
+                        pipe_entity_definition.name == 'entity-ghost' and 'GHOST' or 'REAL',
+                        pipe_entity_name, pipe_position[1], pipe_position[2])
+                end
             end
             break
         end
+    end
+    if not matched then
+        DebugLog.log('[auto_pipe_connectors]   KONIEC: żaden z %d kandydatów sąsiada nie pasował — łącznika nie postawiono. ' ..
+            'Aby połączenie powstało, sąsiad musi być podziemną rurą skierowaną DO tego łącznika albo budynkiem z ' ..
+            'połączeniem fluidbox dokładnie w (%.1f,%.1f).', #neighbors_directions, pipe_position[1], pipe_position[2])
     end
 end
 function rebuild_index()
@@ -230,6 +304,11 @@ function rebuild_index()
         { filter = 'has-product-item', elem_filters = { { filter = 'place-result', elem_filters = { { filter = 'type', type = 'pipe-to-ground' } } } } },
         { mode = 'and', filter = 'has-ingredient-item', elem_filters = { { filter = 'place-result', elem_filters = { { filter = 'type', type = 'pipe' } } } } },
     })
+    if DebugLog.is_enabled() then
+        local rc = 0
+        for _ in pairs(underground_recipe_prototypes) do rc = rc + 1 end
+        DebugLog.log('[auto_pipe_connectors] rebuild_index: %d receptur pasuje do filtra (produkt pipe-to-ground + składnik pipe).', rc)
+    end
     for _, underground_recipe_prototype in pairs(underground_recipe_prototypes) do
         local underground_entity_name
         local pipe_item_name
@@ -241,7 +320,11 @@ function rebuild_index()
                 break
             end
         end
-        if underground_entity_name == nil then goto continue_underground_recipe_prototype end
+        if underground_entity_name == nil then
+            DebugLog.log('[auto_pipe_connectors]   rebuild: receptura "%s" pasuje do filtra, ale nie wykryto ' ..
+                'produktu typu pipe-to-ground — pomijam.', underground_recipe_prototype.name)
+            goto continue_underground_recipe_prototype
+        end
         for _, ingredient in pairs(underground_recipe_prototype.ingredients) do
             local result = ingredient.type == 'item' and prototypes.item[ingredient.name].place_result
             if result and prototypes.entity[result.name].type == 'pipe' then
@@ -252,6 +335,10 @@ function rebuild_index()
         end
         if underground_entity_name and pipe_item_name and pipe_entity_name then
             lookup[underground_entity_name] = { item = pipe_item_name, entity = pipe_entity_name }
+        else
+            DebugLog.log('[auto_pipe_connectors]   rebuild: receptura "%s" produkuje pipe-to-ground "%s", ale BRAK ' ..
+                'składnika typu pipe (item zwykłej rury) — wpis NIE powstał; ta podziemna rura nie będzie auto-łączona.',
+                underground_recipe_prototype.name, tostring(underground_entity_name))
         end
         ::continue_underground_recipe_prototype::
     end
@@ -259,6 +346,12 @@ function rebuild_index()
     local n = 0
     for _ in pairs(lookup) do n = n + 1 end
     log('[auto_pipe_connectors] pipe_lookup zbudowany: ' .. n .. ' wpisów (mapowanie pipe-to-ground → pipe).')
+    if DebugLog.is_enabled() then
+        for underground_name, entry in pairs(lookup) do
+            DebugLog.log('[auto_pipe_connectors]   lookup: "%s" → item="%s" entity="%s"',
+                underground_name, entry.item, entry.entity)
+        end
+    end
 end
 Event.on_init(rebuild_index)
 Event.on_configuration_changed(rebuild_index)
