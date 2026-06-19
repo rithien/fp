@@ -3,7 +3,7 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
-local RENDER_VERSION = 3
+local RENDER_VERSION = 4
 local SWEEP_INTERVAL = 600
 local Public = {}
 local function ensure_storage()

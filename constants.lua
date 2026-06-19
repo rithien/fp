@@ -61,7 +61,7 @@ Constants.spawn_logo = {
     },
     text_lines = {
         { text = 'https://factorio.space', y = 3.75, scale = 2.0,
-          color = { r = 0.06, g = 0.28, b = 0.85 }, vertical_alignment = 'middle' },
+          color = { r = 0.06, g = 0.28, b = 0.85 }, vertical_alignment = 'middle', draw_on_ground = false },
     },
 }
 Constants.audit = {
