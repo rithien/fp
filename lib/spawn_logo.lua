@@ -3,7 +3,8 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
-local RENDER_VERSION = 2
+local RENDER_VERSION = 3
+local SWEEP_INTERVAL = 600
 local Public = {}
 local function ensure_storage()
     if not storage.spawn_logo then
@@ -122,6 +123,7 @@ Event.on_configuration_changed(ensure)
 Event.add(defines.events.on_player_joined_game, function()
     ensure()
 end)
+Event.on_nth_tick(SWEEP_INTERVAL, ensure)
 local Commands = require 'lib.commands'
 Commands.new('spawnlogo', 'Force-redraw the spawn logo and report status (admin)')
     :require_admin()
