@@ -3,6 +3,7 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
+local RENDER_VERSION = 2
 local Public = {}
 local function ensure_storage()
     if not storage.spawn_logo then
@@ -75,7 +76,8 @@ local function draw(surface)
             scale = line.scale or 2.0,
             color = line.color or { r = 1, g = 1, b = 1 },
             alignment = 'center',
-            draw_on_ground = true,
+            vertical_alignment = line.vertical_alignment or 'middle',
+            draw_on_ground = line.draw_on_ground ~= false, 
             scale_with_zoom = false,
         })
     end
@@ -91,17 +93,24 @@ local function ensure()
     end
     local surface = target_surface()
     if not surface then return end
-    if storage.spawn_logo.sprite and storage.spawn_logo.sprite.valid then
+    local fresh = storage.spawn_logo.sprite and storage.spawn_logo.sprite.valid
+        and storage.spawn_logo.code_version == RENDER_VERSION
+    if fresh then
         return 
     end
+    destroy_all()
     draw(surface)
+    storage.spawn_logo.code_version = RENDER_VERSION
 end
 Public.ensure = ensure
 local function redraw()
     destroy_all()
     if is_enabled() then
         local surface = target_surface()
-        if surface then draw(surface) end
+        if surface then
+            draw(surface)
+            storage.spawn_logo.code_version = RENDER_VERSION
+        end
     end
 end
 Public.redraw = redraw
