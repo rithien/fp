@@ -157,6 +157,28 @@ local function make_tab_scroll_pane(tabbed_pane)
     scroll.style.padding = 8
     return scroll
 end
+local TOGGLES_COLUMN_COUNT = 2
+local TOGGLE_CELL_MIN_WIDTH = 260
+local function build_toggle_cell(parent, t)
+    local cell = parent.add({ type = 'flow', direction = 'horizontal' })
+    cell.style.vertical_align = 'center'
+    cell.style.minimal_width = TOGGLE_CELL_MIN_WIDTH
+    local ok, state = pcall(t.get_state)
+    if not ok then
+        state = false
+    end
+    local switch_state = state and 'right' or 'left'
+    Gui.add(cell, {
+        type = 'switch',
+        switch_state = switch_state,
+        left_label_caption = { 'fp-admin.off' },
+        right_label_caption = { 'fp-admin.on' },
+        tooltip = t.tooltip or t.caption,
+        tags = { action = toggle_action_name(t.id) }
+    })
+    local label = cell.add({ type = 'label', caption = t.caption })
+    label.style.left_padding = 8
+end
 local function build_toggles_into(parent)
     if #toggles == 0 then
         parent.add({
@@ -165,26 +187,11 @@ local function build_toggles_into(parent)
         })
         return
     end
+    local tbl = parent.add({ type = 'table', column_count = TOGGLES_COLUMN_COUNT })
+    tbl.style.horizontal_spacing = 24
+    tbl.style.vertical_spacing = 4
     for _, t in ipairs(toggles) do
-        local row = parent.add({ type = 'flow', direction = 'horizontal' })
-        row.style.vertical_align = 'center'
-        row.style.top_padding = 2
-        row.style.bottom_padding = 2
-        local ok, state = pcall(t.get_state)
-        if not ok then
-            state = false
-        end
-        local switch_state = state and 'right' or 'left'
-        Gui.add(row, {
-            type = 'switch',
-            switch_state = switch_state,
-            left_label_caption = { 'fp-admin.off' },
-            right_label_caption = { 'fp-admin.on' },
-            tooltip = t.tooltip or t.caption,
-            tags = { action = toggle_action_name(t.id) }
-        })
-        local label = row.add({ type = 'label', caption = t.caption })
-        label.style.left_padding = 8
+        build_toggle_cell(tbl, t)
     end
 end
 local function build_actions_into(parent)
