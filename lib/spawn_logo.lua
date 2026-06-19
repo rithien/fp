@@ -86,8 +86,35 @@ local function draw(surface)
         surface.name, pos.x, pos.y, tostring(cfg.scale), #s.texts)
     return pos
 end
+local function cleanup_legacy_info_panel()
+    if storage.spawn_logo and storage.spawn_logo.legacy_info_panel_cleaned then return end
+    local removed = 0
+    if storage.info_panel and storage.info_panel.panels then
+        for _, e in pairs(storage.info_panel.panels) do
+            if e and e.valid then e.destroy(); removed = removed + 1 end
+        end
+    end
+    storage.info_panel = nil 
+    if prototypes.entity['display-panel'] then
+        for _, surface in pairs(game.surfaces) do
+            if surface and surface.valid then
+                local panels = surface.find_entities_filtered({ name = 'display-panel', area = { { -2, -2 }, { 2, 2 } } })
+                for _, e in pairs(panels) do
+                    if e.valid and not e.destructible and not e.minable then
+                        e.destroy(); removed = removed + 1
+                    end
+                end
+            end
+        end
+    end
+    if storage.spawn_logo then storage.spawn_logo.legacy_info_panel_cleaned = true end
+    if removed > 0 then
+        log(string.format('[spawn_logo] legacy info-panel cleanup: usunięto %d osierocony(ch) display-panel', removed))
+    end
+end
 local function ensure()
     ensure_storage()
+    cleanup_legacy_info_panel()
     if not is_enabled() then
         destroy_all()
         return
