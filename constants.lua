@@ -89,4 +89,9 @@ Constants.audit = {
     mass_decon_alert = '[Deconstruct] %s tried to deconstruct: %s entities!',
     feedback_title = 'New report from %s',
 }
+Constants.todo_list = {
+    window_max_height = 600,  
+    max_title_len     = 200,  
+    max_desc_len      = 1000, 
+}
 return Constants

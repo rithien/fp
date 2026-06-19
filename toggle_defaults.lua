@@ -13,6 +13,7 @@ return {
     rate_calc        = true,   
     car_finder       = true,   
     feedback         = true,   
+    todo_list        = true,   
     circuit_highlight = true,  
     inserter_throughput = true, 
     bp_params        = false,   
