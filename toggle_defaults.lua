@@ -17,5 +17,6 @@ return {
     circuit_highlight = true,  
     inserter_throughput = true, 
     bp_params        = false,   
+    spawn_logo       = true,   
     debug_log        = false,  
 }

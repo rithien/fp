@@ -48,10 +48,20 @@ Constants.untrusted = {
         'flush_opened_entity_specific_fluid',
     },
 }
-Constants.info_panel = {
-    position = { x = 0, y = 0 },
-    text = 'Want to join us? https://factorio.space',
-    icon = { type = 'virtual', name = 'signal-info' },
+Constants.spawn_logo = {
+    sprite = 'file/img/world/logo-pad.png',
+    scale = 0.32,
+    render_layer = 'floor',
+    position_offset = { x = 0, y = 0 },
+    light = {
+        enabled = true,
+        sprite = 'utility/light_medium',
+        scale = 6,
+        minimum_darkness = 0.1,
+    },
+    text_lines = {
+        { text = 'factorio.space', y = 5.6, scale = 2.0, color = { r = 1, g = 1, b = 1 } },
+    },
 }
 Constants.audit = {
     mine = 'tried to mine %s (owner: %s)',
