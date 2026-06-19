@@ -59,10 +59,7 @@ Constants.spawn_logo = {
         scale = 6,
         minimum_darkness = 0.1,
     },
-    text_lines = {
-        { text = 'https://factorio.space', y = 3.75, scale = 2.0,
-          color = { r = 0.06, g = 0.28, b = 0.85 }, vertical_alignment = 'middle', draw_on_ground = false },
-    },
+    text_lines = {},
 }
 Constants.audit = {
     mine = 'tried to mine %s (owner: %s)',
