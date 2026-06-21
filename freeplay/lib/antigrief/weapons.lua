@@ -45,9 +45,6 @@ local ammo_names =
     ['flamethrower-ammo'] = true
 }
 local function on_player_ammo_inventory_changed(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then
         return
@@ -82,9 +79,6 @@ local function on_player_ammo_inventory_changed(event)
 end
 local function on_built_entity(event)
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     local created_entity = event.entity
     if created_entity.type == 'entity-ghost' then
         local player = game.get_player(event.player_index)
@@ -108,9 +102,6 @@ local function on_built_entity(event)
     end
 end
 local function on_player_used_capsule(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end 
     if player.admin then 
@@ -176,9 +167,6 @@ local function on_player_used_capsule(event)
     end
 end
 local function on_player_cursor_stack_changed(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then
         return

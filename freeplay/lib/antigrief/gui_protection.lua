@@ -51,7 +51,6 @@ local function is_player_in_vehicle(player, entity)
     return is_self(entity.get_driver()) or is_self(entity.get_passenger())
 end
 local function on_gui_opened(event)
-    if not this.enabled then return end
     local entity = event.entity
     if not entity or not entity.valid then return end
     local player = game.get_player(event.player_index)
@@ -59,7 +58,7 @@ local function on_gui_opened(event)
     if event.gui_type == defines.gui_type.entity and entity.name ~= 'character-corpse'
         and not gui_open_whitelist[entity.name]
         and should_hard_block(player, entity) and not is_player_in_vehicle(player, entity) then
-        if AdminPresence.is_active() then
+        if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_gui, entity.name, get_owner_name(entity)))
             return
         end
@@ -101,14 +100,13 @@ local function on_gui_opened(event)
 end
 local pending_paste_mirror = nil
 local function on_pre_entity_settings_pasted(event)
-    if not this.enabled then return end
     pending_paste_mirror = nil
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     local dest = event.destination
     if not dest or not dest.valid then return end
     if not should_hard_block(player, dest) then return end
-    if AdminPresence.is_active() then return end
+    if AdminPresence.is_permissive() then return end
     if not game.surfaces.gulag then
         game.create_surface('gulag', { width = 32, height = 32 })
     end
@@ -122,7 +120,6 @@ local function on_pre_entity_settings_pasted(event)
     end
 end
 local function on_entity_settings_pasted(event)
-    if not this.enabled then return end
     local mirror_data = pending_paste_mirror
     pending_paste_mirror = nil
     local player = game.get_player(event.player_index)
@@ -136,7 +133,7 @@ local function on_entity_settings_pasted(event)
         mirror_data.mirror.destroy()
     end
     if blocked then
-        if AdminPresence.is_active() then
+        if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_paste, dest.name, get_owner_name(dest)))
         else
             tamper_warn_or_strike(player, 'paste', format(AUDIT.paste_tamper, dest.name, get_owner_name(dest)))

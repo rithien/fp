@@ -14,6 +14,12 @@ function AdminPresence.is_active()
     if not this.admin_temp_trust then return false end
     return any_admin_online()
 end
+function AdminPresence.is_permissive()
+    if not this then return false end
+    if not this.enabled then return true end
+    if not this.admin_temp_trust then return false end
+    return any_admin_online()
+end
 function AdminPresence.reevaluate()
     if not this then return end
     local active = AdminPresence.is_active()

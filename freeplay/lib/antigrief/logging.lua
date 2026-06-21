@@ -59,20 +59,11 @@ local function on_player_joined_game(event)
     if not player then
         return
     end
-    if not this.enabled then
-        if not Session.get_trusted_player(player) then
-            Session.set_trusted_player(player)
-        end
-        return
-    end
     if match(player.name, '^[Ili1|]+$') then
         game.ban_player(player.name, '') 
     end
 end
 local function on_player_built_tile(event)
-    if not this.enabled then
-        return
-    end
     local placed_tiles = event.tiles
     if placed_tiles[1].old_tile.name ~= 'deepwater' and placed_tiles[1].old_tile.name ~= 'water' and placed_tiles[1].old_tile.name ~= 'water-green' then
         return
@@ -101,9 +92,6 @@ local function on_player_built_tile(event)
 end
 local function on_console_command(event)
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     if not event.player_index then
         return
     end
@@ -146,7 +134,6 @@ local function on_console_command(event)
     Server.log_antigrief_data('whisper', str, nil, player.name)
 end
 local function on_console_chat(event)
-    if not this.enabled then return end 
     if not event.player_index then
         return
     end
@@ -188,9 +175,6 @@ local function on_console_chat(event)
     end
 end
 local function on_player_cancelled_crafting(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end 
     if is_logging_muted_for(player) then return end
@@ -242,9 +226,6 @@ local function on_init()
 end
 local function on_permission_group_added(event)
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     local player = event.player_index and game.get_player(event.player_index)
     if not player or not player.valid then
         return
@@ -256,9 +237,6 @@ local function on_permission_group_added(event)
 end
 local function on_permission_group_deleted(event)
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     local player = event.player_index and game.get_player(event.player_index)
     if not player or not player.valid then
         return
@@ -270,9 +248,6 @@ local function on_permission_group_deleted(event)
     end
 end
 local function on_player_deconstructed_area(event)
-    if not this.enabled then
-        return
-    end
     if not game.is_multiplayer() then
         return
     end
@@ -292,7 +267,7 @@ local function on_player_deconstructed_area(event)
     local count = surface.count_entities_filtered({ area = area, type = 'resource', invert = true })
     local max_count = 0
     local is_trusted = Session.get_trusted_player(player)
-    if is_trusted or AdminPresence.is_active() then
+    if is_trusted or AdminPresence.is_permissive() then
         max_count = this.max_count_decon
     end
     if next(this.filtered_types_on_decon) then
@@ -361,9 +336,6 @@ local function on_player_deconstructed_area(event)
 end
 local function on_permission_group_edited(event)
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     local player = event.player_index and game.get_player(event.player_index)
     if not player or not player.valid then
         return
@@ -392,9 +364,6 @@ local function on_permission_group_edited(event)
 end
 local function on_permission_string_imported(event)
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     local player = event.player_index and game.get_player(event.player_index)
     if not player or not player.valid then
         return
@@ -402,9 +371,6 @@ local function on_permission_string_imported(event)
     log_msg('[Permission_Group]', player.name .. ' imported a permission string')
 end
 local function on_player_muted(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end 
     local message =
@@ -424,9 +390,6 @@ local function on_player_muted(event)
     Server.to_discord_antigrief_embed_parsed(message) 
 end
 local function on_player_unmuted(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end 
     local message =
@@ -452,9 +415,6 @@ local function get_distance(pos1, pos2)
 end
 local function flush_robot_mining_logs()
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     local current_tick = game.tick
     local time_threshold = AG.robot_mining_cluster_time_threshold_ticks
     for player_index, clusters in pairs(this.robot_mining_pending) do
@@ -527,9 +487,6 @@ local function flush_robot_mining_logs()
 end
 local function on_robot_mined_entity(event)
     bind_storage() 
-    if not this.enabled then
-        return
-    end
     local entity = event.entity
     if not entity or not entity.valid then
         return

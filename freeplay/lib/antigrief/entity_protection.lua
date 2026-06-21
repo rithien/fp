@@ -59,14 +59,14 @@ local create_ghost_token =
         true
     )
 local function on_marked_for_deconstruction(event)
-    if not this.enabled or not event.player_index then return end
+    if not event.player_index then return end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     if this.do_not_check_trusted then return end
     local entity = event.entity
     if not entity or not entity.valid then return end
     if should_hard_block(player, entity) then
-        if AdminPresence.is_active() then
+        if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_decon, entity.name, get_owner_name(entity)))
             return
         end
@@ -78,14 +78,14 @@ local function on_marked_for_deconstruction(event)
 end
 local function on_pre_ghost_deconstructed(event)
     bind_storage() 
-    if not this.enabled or not event.player_index then return end
+    if not event.player_index then return end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     if this.do_not_check_trusted then return end
     local ghost = event.ghost
     if not ghost or not ghost.valid then return end
     if should_hard_block(player, ghost) then
-        if AdminPresence.is_active() then
+        if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_ghost, ghost.ghost_name or ghost.name, get_owner_name(ghost)))
             return
         end
@@ -332,9 +332,6 @@ local function restore_entity(snapshot, griefer_name)
         { pending = snapshot, attempts = 0, griefer = griefer_name })
 end
 local function on_player_mined_entity(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then
         return
@@ -456,9 +453,6 @@ local function capture_entity_state(entity)
     return snapshot
 end
 local function on_pre_player_mined_item(event)
-    if not this.enabled then
-        return
-    end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then
         return
@@ -468,7 +462,7 @@ local function on_pre_player_mined_item(event)
         return
     end
     if should_hard_block(player, entity) then
-        if AdminPresence.is_active() then
+        if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_mine, entity.name, get_owner_name(entity)))
             return
         end
@@ -521,9 +515,6 @@ local function on_pre_player_mined_item(event)
     end
 end
 local function on_marked_for_upgrade(event)
-    if not this.enabled then
-        return
-    end
     local entity = event.entity
     local player_index = event.player_index
     local player = game.players[player_index]
@@ -534,7 +525,7 @@ local function on_marked_for_upgrade(event)
         return
     end
     if should_hard_block(player, entity) then
-        if AdminPresence.is_active() then
+        if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_upgrade, entity.name, get_owner_name(entity)))
             return
         end
@@ -550,13 +541,12 @@ local function on_marked_for_upgrade(event)
     append_scenario_history(player, entity, player.name .. ' upgraded entity (' .. entity.name .. ') to target (' .. target.name .. ')')
 end
 local function on_player_rotated_entity(event)
-    if not this.enabled then return end
     local entity = event.entity
     if not entity or not entity.valid then return end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
     if should_hard_block(player, entity) then
-        if AdminPresence.is_active() then
+        if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_rotate, entity.name, get_owner_name(entity)))
             return
         end
@@ -567,9 +557,6 @@ local function on_player_rotated_entity(event)
     end
 end
 local function on_cancelled_deconstruction(event)
-    if not this.enabled then
-        return
-    end
     local player_index = event.player_index
     if player_index then
         return

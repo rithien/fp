@@ -64,7 +64,7 @@ local function combat_recreate(event)
     if not (victim and victim.valid) then return false end
     if victim.force.name ~= attacker.force.name then return false end
     if not should_hard_block(attacker, victim) then return false end
-    if AdminPresence.is_active() then
+    if AdminPresence.is_permissive() then
         log_admin_override(attacker, format(AUDIT.override_combat, victim.name, get_owner_name(victim)))
         return true
     end
@@ -80,9 +80,6 @@ local function combat_recreate(event)
     return true
 end
 local function on_entity_died(event)
-    if not this.enabled then
-        return
-    end
     if combat_recreate(event) then return end
     local cause = event.cause
     local name
@@ -185,7 +182,6 @@ local clear_damage_history_token =
         end
     )
 local function on_entity_damaged(event)
-    if not this.enabled then return end
     local player = resolve_combat_attacker(event.cause)
     if not player or not player.valid then return end
     local entity = event.entity
@@ -193,7 +189,7 @@ local function on_entity_damaged(event)
     if not entity.last_user then return end
     if entity.force.name ~= player.force.name then return end
     if not should_hard_block(player, entity) then return end
-    if AdminPresence.is_active() then return end
+    if AdminPresence.is_permissive() then return end
     if entity.health then
         entity.health = math.min(entity.max_health, entity.health + event.final_damage_amount)
     end
