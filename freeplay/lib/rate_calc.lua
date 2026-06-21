@@ -4,6 +4,8 @@ local Util = require 'lib.rate_calc.util'
 local RateCalcWindow = require 'gui.rate_calc_window'
 local DebugLog = require 'lib.debug_log'
 local Config = require 'lib.config'
+local Task = require 'lib.task'
+local Token = require 'lib.token'
 local de = defines.events
 local RATE_CALC_TOGGLE_ID = 'rate_calc'
 local function filter_calculable(entities)
@@ -40,6 +42,15 @@ local function ensure_storage()
 end
 Event.on_init(ensure_storage)
 Event.on_configuration_changed(ensure_storage)
+local restore_tool_token = Token.register(function(params)
+    local player = game.get_player(params.player_index)
+    if not player or not player.valid then return end
+    if not storage.rate_calc or not storage.rate_calc.mode[params.player_index] then return end
+    local stack = player.cursor_stack
+    if stack and stack.valid_for_read and (stack.is_blueprint or stack.is_blueprint_book) then
+        stack.set_stack({ name = SELECTION_TOOL, count = 1 })
+    end
+end)
 function RateCalc.is_enabled()
     return Config.is_enabled(RATE_CALC_TOGGLE_ID)
 end
@@ -128,7 +139,7 @@ local function dump_set_to_chat(set, player)
     end
 end
 local MAX_CALCULABLE = 2000
-local function run_calc(player_index, raw_entities, area, surface, invert, blueprint_stack)
+local function run_calc(player_index, raw_entities, area, surface, invert)
     ensure_storage()
     if not storage.rate_calc.mode[player_index] then
         return 
@@ -144,7 +155,6 @@ local function run_calc(player_index, raw_entities, area, surface, invert, bluep
     for _ in pairs(entities) do total = total + 1 end
     if total == 0 then
         player.print({ 'fp-rate-calc.empty-selection' })
-        if blueprint_stack and blueprint_stack.valid_for_read then blueprint_stack.clear() end
         return 
     end
     local calculable, skipped = filter_calculable(entities)
@@ -156,13 +166,11 @@ local function run_calc(player_index, raw_entities, area, surface, invert, bluep
             msg = { 'fp-rate-calc.none-calculable', total }
         end
         player.print(msg, { color = { r = 1, g = 1, b = 0.5 } })
-        if blueprint_stack and blueprint_stack.valid_for_read then blueprint_stack.clear() end
         return 
     end
     if #calculable > MAX_CALCULABLE then
         player.print({ 'fp-rate-calc.selection-too-large', #calculable, MAX_CALCULABLE },
             { color = { r = 1, g = 1, b = 0.5 } })
-        if blueprint_stack and blueprint_stack.valid_for_read then blueprint_stack.clear() end
         return
     end
     local set = Calc.run(player, calculable, invert)
@@ -181,22 +189,23 @@ local function run_calc(player_index, raw_entities, area, surface, invert, bluep
     if DebugLog.is_enabled() then
         dump_set_to_chat(set, player)
     end
-    if blueprint_stack and blueprint_stack.valid_for_read then
-        blueprint_stack.clear()
-    end
 end
 local function handle_selected_area(event)
     if event.item ~= SELECTION_TOOL then return end
     local invert = event.name == de.on_player_reverse_selected_area
         or event.name == de.on_player_alt_reverse_selected_area
-    run_calc(event.player_index, event.entities, event.area, event.surface, invert, nil)
+    run_calc(event.player_index, event.entities, event.area, event.surface, invert)
 end
 local function handle_setup_blueprint(event)
     local entities = nil
     if event.mapping and event.mapping.valid then
         entities = event.mapping.get()
     end
-    run_calc(event.player_index, entities, event.area, event.surface, false, event.stack)
+    run_calc(event.player_index, entities, event.area, event.surface, false)
+    ensure_storage()
+    if storage.rate_calc.mode[event.player_index] then
+        Task.set_timeout_in_ticks(1, restore_tool_token, { player_index = event.player_index })
+    end
 end
 Event.add(de.on_player_selected_area, handle_selected_area)
 Event.add(de.on_player_alt_selected_area, handle_selected_area)
