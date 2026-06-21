@@ -241,6 +241,7 @@ local function on_init()
     apply_default_permission_tweaks()
 end
 local function on_permission_group_added(event)
+    bind_storage() 
     if not this.enabled then
         return
     end
@@ -254,6 +255,7 @@ local function on_permission_group_added(event)
     end
 end
 local function on_permission_group_deleted(event)
+    bind_storage() 
     if not this.enabled then
         return
     end
@@ -358,6 +360,7 @@ local function on_player_deconstructed_area(event)
     end
 end
 local function on_permission_group_edited(event)
+    bind_storage() 
     if not this.enabled then
         return
     end
@@ -388,6 +391,7 @@ local function on_permission_group_edited(event)
     end
 end
 local function on_permission_string_imported(event)
+    bind_storage() 
     if not this.enabled then
         return
     end

@@ -50,14 +50,21 @@ local function draw(surface)
     local cfg = Constants.spawn_logo
     local pos = logo_position(surface)
     local s = storage.spawn_logo
-    s.sprite = rendering.draw_sprite({
-        sprite = cfg.sprite,
-        render_layer = cfg.render_layer or 'floor',
-        target = pos,
-        x_scale = cfg.scale,
-        y_scale = cfg.scale,
-        surface = surface,
-    })
+    local ok, sprite = pcall(function()
+        return rendering.draw_sprite({
+            sprite = cfg.sprite,
+            render_layer = cfg.render_layer or 'floor',
+            target = pos,
+            x_scale = cfg.scale,
+            y_scale = cfg.scale,
+            surface = surface,
+        })
+    end)
+    if not ok or not sprite then
+        DebugLog.log('[spawn_logo] draw — sprite "%s" niegotowy (early lifecycle), ponowię przy następnym sweepie', tostring(cfg.sprite))
+        return pos
+    end
+    s.sprite = sprite
     if cfg.light and cfg.light.enabled then
         s.light = rendering.draw_light({
             sprite = cfg.light.sprite or 'utility/light_medium',
