@@ -16,6 +16,9 @@ AdminPanel.register_action({
     id = 'hide_map',
     caption = { 'fp-admin.hide-map-caption' },
     tooltip = { 'fp-admin.hide-map-tooltip' },
+    sprite = 'file/img/gui/admin/hide_map.png',
+    sprite_fallback = 'item/radar',
+    caption_short = { 'fp-admin.hide-map-short' },
     on_click = function(player)
         local queued, total = ChunkJobs.enqueue(player, 'hide_map')
         if not queued then

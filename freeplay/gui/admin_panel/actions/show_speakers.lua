@@ -3,6 +3,9 @@ AdminPanel.register_action({
     id = 'show_speakers',
     caption = { 'fp-admin.show-speakers-caption' },
     tooltip = { 'fp-admin.show-speakers-tooltip' },
+    sprite = 'file/img/gui/admin/show_speakers.png',
+    sprite_fallback = 'item/programmable-speaker',
+    caption_short = { 'fp-admin.show-speakers-short' },
     on_click = function(player)
         local speakers = player.surface.find_entities_filtered({
             force = player.force,

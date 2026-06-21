@@ -6,6 +6,9 @@ AdminPanel.register_action({
     id = 'fast_start_redistribute',
     caption = { 'fp-admin.fast-start-redistribute-caption' },
     tooltip = { 'fp-admin.fast-start-redistribute-tooltip' },
+    sprite = 'file/img/gui/admin/fast_start_redistribute.png',
+    sprite_fallback = 'item/wooden-chest',
+    caption_short = { 'fp-admin.fast-start-redistribute-short' },
     on_click = function(player)
         local active_caption, force_give
         if Config.is_enabled('fast_start') then

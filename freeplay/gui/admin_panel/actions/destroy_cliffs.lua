@@ -4,6 +4,9 @@ AdminPanel.register_action({
     id = 'destroy_cliffs',
     caption = { 'fp-admin.destroy-cliffs-caption' },
     tooltip = { 'fp-admin.destroy-cliffs-tooltip' },
+    sprite = 'file/img/gui/admin/destroy_cliffs.png',
+    sprite_fallback = 'item/cliff-explosives',
+    caption_short = { 'fp-admin.destroy-cliffs-short' },
     on_click = function(player)
         local surface = player.surface
         local pos = player.position

@@ -101,6 +101,9 @@ AdminPanel.register_action({
     id = 'regenerate_resources',
     caption = { 'fp-admin.regenerate-resources-caption' },
     tooltip = { 'fp-admin.regenerate-resources-tooltip' },
+    sprite = 'file/img/gui/admin/regenerate_resources.png',
+    sprite_fallback = 'item/iron-ore',
+    caption_short = { 'fp-admin.regenerate-resources-short' },
     on_click = function(player)
         local queued, total = ChunkJobs.enqueue(player, 'regenerate_resources', {
             extra = { reset = 0, destroyed = 0, skipped_fluid = 0, skipped_no_autoplace = 0 },

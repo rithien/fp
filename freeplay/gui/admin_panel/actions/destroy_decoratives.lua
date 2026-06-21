@@ -17,6 +17,9 @@ AdminPanel.register_action({
     id = 'destroy_decoratives',
     caption = { 'fp-admin.destroy-decoratives-caption' },
     tooltip = { 'fp-admin.destroy-decoratives-tooltip' },
+    sprite = 'file/img/gui/admin/destroy_decoratives.png',
+    sprite_fallback = 'item/deconstruction-planner',
+    caption_short = { 'fp-admin.destroy-decoratives-short' },
     on_click = function(player)
         local queued, total = ChunkJobs.enqueue(player, 'destroy_decoratives')
         if not queued then

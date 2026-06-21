@@ -14,6 +14,9 @@ AdminPanel.register_action({
     id = 'delete_unrevealed_chunks',
     caption = { 'fp-admin.delete-unrevealed-chunks-caption' },
     tooltip = { 'fp-admin.delete-unrevealed-chunks-tooltip' },
+    sprite = 'file/img/gui/admin/delete_unrevealed_chunks.png',
+    sprite_fallback = 'item/deconstruction-planner',
+    caption_short = { 'fp-admin.delete-unrevealed-chunks-short' },
     on_click = function(player)
         local surface = player.surface
         local force = player.force

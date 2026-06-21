@@ -3,6 +3,9 @@ AdminPanel.register_action({
     id = 'destroy_speakers',
     caption = { 'fp-admin.destroy-speakers-caption' },
     tooltip = { 'fp-admin.destroy-speakers-tooltip' },
+    sprite = 'file/img/gui/admin/destroy_speakers.png',
+    sprite_fallback = 'item/programmable-speaker',
+    caption_short = { 'fp-admin.destroy-speakers-short' },
     on_click = function(player)
         local speakers = player.surface.find_entities_filtered({
             force = player.force,

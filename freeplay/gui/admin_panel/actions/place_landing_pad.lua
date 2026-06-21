@@ -3,6 +3,9 @@ AdminPanel.register_action({
     id = 'place_landing_pad',
     caption = { 'fp-admin.place-landing-pad-caption' },
     tooltip = { 'fp-admin.place-landing-pad-tooltip' },
+    sprite = 'file/img/gui/admin/place_landing_pad.png',
+    sprite_fallback = 'item/cargo-landing-pad',
+    caption_short = { 'fp-admin.place-landing-pad-short' },
     on_click = function(player)
         if not prototypes.entity['cargo-landing-pad'] then
             player.print({ 'fp-admin.place-landing-pad-missing' })

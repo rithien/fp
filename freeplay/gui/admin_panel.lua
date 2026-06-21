@@ -54,6 +54,9 @@ function Public.register_action(def)
     assert(type(def.id) == 'string' and def.id ~= '', 'admin_panel action requires .id (string)')
     assert(type(def.caption) == 'string' or type(def.caption) == 'table', 'admin_panel action requires .caption (string or LocalisedString)')
     assert(type(def.on_click) == 'function', 'admin_panel action requires .on_click (function)')
+    assert(def.sprite == nil or type(def.sprite) == 'string', 'admin_panel action .sprite must be a string (sprite path)')
+    assert(def.sprite_fallback == nil or type(def.sprite_fallback) == 'string', 'admin_panel action .sprite_fallback must be a string (sprite path)')
+    assert(def.caption_short == nil or type(def.caption_short) == 'string' or type(def.caption_short) == 'table', 'admin_panel action .caption_short must be a string or LocalisedString')
     table.insert(actions, def)
     Gui.on_click(action_action_name(def.id), function(_, player)
         if not player or not player.valid or not player.admin then
@@ -159,6 +162,17 @@ local function make_tab_scroll_pane(tabbed_pane)
 end
 local TOGGLES_COLUMN_COUNT = 2
 local TOGGLE_CELL_MIN_WIDTH = 260
+local ACTIONS_COLUMN_COUNT = 4
+local ACTION_CELL_WIDTH = 96
+local function resolve_action_sprite(a)
+    if a.sprite and helpers.is_valid_sprite_path(a.sprite) then
+        return a.sprite
+    end
+    if a.sprite_fallback and helpers.is_valid_sprite_path(a.sprite_fallback) then
+        return a.sprite_fallback
+    end
+    return 'utility/danger_icon'
+end
 local function build_toggle_cell(parent, t)
     local cell = parent.add({ type = 'flow', direction = 'horizontal' })
     cell.style.vertical_align = 'center'
@@ -202,16 +216,26 @@ local function build_actions_into(parent)
         })
         return
     end
+    local tbl = parent.add({ type = 'table', column_count = ACTIONS_COLUMN_COUNT })
+    tbl.style.horizontal_spacing = 8
+    tbl.style.vertical_spacing = 8
     for _, a in ipairs(actions) do
-        local btn = Gui.add(parent, {
-            type = 'button',
-            caption = a.caption,
-            tooltip = a.tooltip,
+        local cell = tbl.add({ type = 'flow', direction = 'vertical' })
+        cell.style.horizontal_align = 'center'
+        cell.style.width = ACTION_CELL_WIDTH
+        Gui.add(cell, {
+            type = 'sprite-button',
+            style = 'slot_button',
+            sprite = resolve_action_sprite(a),
+            tooltip = a.tooltip or a.caption,
             tags = { action = action_action_name(a.id) }
         })
-        btn.style.horizontally_stretchable = true
-        btn.style.minimal_width = 220
-        btn.style.top_margin = 2
+        local label = cell.add({ type = 'label', caption = a.caption_short or a.caption })
+        label.style.single_line = false
+        label.style.horizontal_align = 'center'
+        label.style.maximal_width = ACTION_CELL_WIDTH
+        label.style.top_margin = 2
+        label.ignored_by_interaction = true
     end
 end
 local function build_sliders_into(parent)

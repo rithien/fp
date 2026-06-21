@@ -4,6 +4,9 @@ AdminPanel.register_action({
     id = 'reveal_150',
     caption = { 'fp-admin.reveal-150-caption' },
     tooltip = { 'fp-admin.reveal-150-tooltip' },
+    sprite = 'file/img/gui/admin/reveal_150.png',
+    sprite_fallback = 'item/radar',
+    caption_short = { 'fp-admin.reveal-150-short' },
     on_click = function(player)
         local pos = player.position
         local surface = player.surface
