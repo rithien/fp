@@ -352,6 +352,10 @@ local function build_panel(player)
         tags = { action = CLOSE_ACTION }
     })
     local tabbed_pane = frame.add({ type = 'tabbed-pane' })
+    local actions_tab = tabbed_pane.add({ type = 'tab', caption = { 'fp-admin.tab-actions' } })
+    local actions_scroll = make_tab_scroll_pane(tabbed_pane)
+    build_actions_into(actions_scroll)
+    tabbed_pane.add_tab(actions_tab, actions_scroll)
     local toggles_tab = tabbed_pane.add({ type = 'tab', caption = { 'fp-admin.tab-toggles' } })
     local toggles_scroll = make_tab_scroll_pane(tabbed_pane)
     build_toggles_into(toggles_scroll)
@@ -364,10 +368,6 @@ local function build_panel(player)
     local dropdowns_scroll = make_tab_scroll_pane(tabbed_pane)
     build_dropdowns_into(dropdowns_scroll)
     tabbed_pane.add_tab(dropdowns_tab, dropdowns_scroll)
-    local actions_tab = tabbed_pane.add({ type = 'tab', caption = { 'fp-admin.tab-actions' } })
-    local actions_scroll = make_tab_scroll_pane(tabbed_pane)
-    build_actions_into(actions_scroll)
-    tabbed_pane.add_tab(actions_tab, actions_scroll)
     tabbed_pane.selected_tab_index = 1
     player.opened = frame
 end
