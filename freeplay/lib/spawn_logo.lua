@@ -3,22 +3,49 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
-local RENDER_VERSION = 5
+local RENDER_VERSION = 6
 local SWEEP_INTERVAL = 600
 local Public = {}
+local function safe_destroy(obj)
+    if obj and obj.valid then obj.destroy() end
+end
 local function ensure_storage()
     if not storage.spawn_logo then
-        storage.spawn_logo = { sprite = nil, light = nil, texts = {} }
+        storage.spawn_logo = { surfaces = {} }
     end
-    if not storage.spawn_logo.texts then storage.spawn_logo.texts = {} end
+    local s = storage.spawn_logo
+    if not s.surfaces then s.surfaces = {} end
+    if s.sprite ~= nil or s.light ~= nil or s.texts ~= nil then
+        safe_destroy(s.sprite)
+        safe_destroy(s.light)
+        if type(s.texts) == 'table' then
+            for _, t in pairs(s.texts) do safe_destroy(t) end
+        end
+        s.sprite = nil
+        s.light = nil
+        s.texts = nil
+        s.code_version = nil 
+    end
 end
 local function is_enabled()
     return Config.is_enabled(TOGGLE_ID)
 end
-local function target_surface()
-    local surface = game.surfaces[1]
-    if surface and surface.valid then return surface end
-    return nil
+local function is_logo_surface(surface)
+    local ok_pf, platform = pcall(function() return surface.platform end)
+    if ok_pf and platform then return false end
+    if surface == game.surfaces[1] then return true end
+    local ok_pl, planet = pcall(function() return surface.planet end)
+    if ok_pl and planet then return true end
+    return false
+end
+local function target_surfaces()
+    local result = {}
+    for _, surface in pairs(game.surfaces) do
+        if surface and surface.valid and is_logo_surface(surface) then
+            result[#result + 1] = surface
+        end
+    end
+    return result
 end
 local function logo_position(surface)
     local cfg = Constants.spawn_logo
@@ -31,25 +58,39 @@ local function logo_position(surface)
     end
     return { x = spawn.x + (off.x or 0), y = spawn.y + (off.y or 0) }
 end
-local function safe_destroy(obj)
-    if obj and obj.valid then obj.destroy() end
+local function destroy_entry(idx)
+    local s = storage.spawn_logo
+    local entry = s.surfaces[idx]
+    if not entry then return end
+    safe_destroy(entry.sprite)
+    safe_destroy(entry.light)
+    for _, t in pairs(entry.texts or {}) do safe_destroy(t) end
+    s.surfaces[idx] = nil
 end
 local function destroy_all()
     ensure_storage()
     local s = storage.spawn_logo
-    safe_destroy(s.sprite)
-    safe_destroy(s.light)
-    for _, t in pairs(s.texts) do safe_destroy(t) end
-    s.sprite = nil
-    s.light = nil
-    s.texts = {}
-    DebugLog.log('[spawn_logo] destroy_all — render-objekty usunięte')
+    local n = 0
+    for idx in pairs(s.surfaces) do
+        destroy_entry(idx)
+        n = n + 1
+    end
+    DebugLog.log('[spawn_logo] destroy_all — render-objekty usunięte (%d powierzchni)', n)
 end
 Public.destroy_all = destroy_all
+local function prune_dead_surfaces()
+    local s = storage.spawn_logo
+    for idx in pairs(s.surfaces) do
+        local surf = game.get_surface(idx)
+        if not (surf and surf.valid) then
+            destroy_entry(idx)
+        end
+    end
+end
 local function draw(surface)
     local cfg = Constants.spawn_logo
     local pos = logo_position(surface)
-    local s = storage.spawn_logo
+    local entry = { sprite = nil, light = nil, texts = {} }
     local ok, sprite = pcall(function()
         return rendering.draw_sprite({
             sprite = cfg.sprite,
@@ -61,12 +102,13 @@ local function draw(surface)
         })
     end)
     if not ok or not sprite then
-        DebugLog.log('[spawn_logo] draw — sprite "%s" niegotowy (early lifecycle), ponowię przy następnym sweepie', tostring(cfg.sprite))
+        DebugLog.log('[spawn_logo] draw — sprite "%s" niegotowy na "%s" (early lifecycle), ponowię przy następnym sweepie',
+            tostring(cfg.sprite), surface.name)
         return pos
     end
-    s.sprite = sprite
+    entry.sprite = sprite
     if cfg.light and cfg.light.enabled then
-        s.light = rendering.draw_light({
+        entry.light = rendering.draw_light({
             sprite = cfg.light.sprite or 'utility/light_medium',
             render_layer = cfg.render_layer or 'floor',
             target = pos,
@@ -75,9 +117,8 @@ local function draw(surface)
             minimum_darkness = cfg.light.minimum_darkness or 0.1,
         })
     end
-    s.texts = {}
     for _, line in pairs(cfg.text_lines or {}) do
-        s.texts[#s.texts + 1] = rendering.draw_text({
+        entry.texts[#entry.texts + 1] = rendering.draw_text({
             text = line.text,
             surface = surface,
             target = { pos.x, pos.y + (line.y or 0) },
@@ -89,8 +130,9 @@ local function draw(surface)
             scale_with_zoom = false,
         })
     end
+    storage.spawn_logo.surfaces[surface.index] = entry
     DebugLog.log('[spawn_logo] draw — surface "%s" @ (%.1f,%.1f) scale=%s lines=%d',
-        surface.name, pos.x, pos.y, tostring(cfg.scale), #s.texts)
+        surface.name, pos.x, pos.y, tostring(cfg.scale), #entry.texts)
     return pos
 end
 local function cleanup_legacy_info_panel()
@@ -119,6 +161,13 @@ local function cleanup_legacy_info_panel()
         log(string.format('[spawn_logo] legacy info-panel cleanup: usunięto %d osierocony(ch) display-panel', removed))
     end
 end
+local function ensure_surface(surface)
+    local entry = storage.spawn_logo.surfaces[surface.index]
+    if entry and entry.sprite and entry.sprite.valid then
+        return 
+    end
+    draw(surface)
+end
 local function ensure()
     ensure_storage()
     cleanup_legacy_info_panel()
@@ -126,26 +175,25 @@ local function ensure()
         destroy_all()
         return
     end
-    local surface = target_surface()
-    if not surface then return end
-    local fresh = storage.spawn_logo.sprite and storage.spawn_logo.sprite.valid
-        and storage.spawn_logo.code_version == RENDER_VERSION
-    if fresh then
-        return 
+    local s = storage.spawn_logo
+    if s.code_version ~= RENDER_VERSION then
+        destroy_all()
+        s.code_version = RENDER_VERSION
     end
-    destroy_all()
-    draw(surface)
-    storage.spawn_logo.code_version = RENDER_VERSION
+    prune_dead_surfaces()
+    for _, surface in pairs(target_surfaces()) do
+        ensure_surface(surface)
+    end
 end
 Public.ensure = ensure
 local function redraw()
     destroy_all()
     if is_enabled() then
-        local surface = target_surface()
-        if surface then
+        prune_dead_surfaces()
+        for _, surface in pairs(target_surfaces()) do
             draw(surface)
-            storage.spawn_logo.code_version = RENDER_VERSION
         end
+        storage.spawn_logo.code_version = RENDER_VERSION
     end
 end
 Public.redraw = redraw
@@ -157,30 +205,36 @@ Event.on_configuration_changed(ensure)
 Event.add(defines.events.on_player_joined_game, function()
     ensure()
 end)
+Event.add(defines.events.on_surface_created, function()
+    ensure()
+end)
 Event.on_nth_tick(SWEEP_INTERVAL, ensure)
 local Commands = require 'lib.commands'
-Commands.new('spawnlogo', 'Force-redraw the spawn logo and report status (admin)')
+Commands.new('spawnlogo', 'Force-redraw the spawn logo on every planet and report status (admin)')
     :require_admin()
     :callback(function(cmd)
         ensure_storage()
         redraw()
         local cfg = Constants.spawn_logo
-        local surface = target_surface()
         local s = storage.spawn_logo
         local lines = {
             string.format('[spawn_logo] toggle=%s sprite="%s" scale=%s',
                 tostring(is_enabled()), tostring(cfg.sprite), tostring(cfg.scale)),
         }
-        if surface then
-            local pos = logo_position(surface)
-            lines[#lines + 1] = string.format('  surface "%s" pos=(%.1f,%.1f)', surface.name, pos.x, pos.y)
+        local surfaces = target_surfaces()
+        if #surfaces == 0 then
+            lines[#lines + 1] = '  surfaces: NONE (brak powierzchni-planet)'
         else
-            lines[#lines + 1] = '  surface: NONE (game.surfaces[1] niedostępna)'
+            for _, surface in pairs(surfaces) do
+                local entry = s.surfaces[surface.index]
+                local pos = logo_position(surface)
+                lines[#lines + 1] = string.format('  surface "%s" pos=(%.1f,%.1f) sprite=%s light=%s texts=%d',
+                    surface.name, pos.x, pos.y,
+                    tostring(entry ~= nil and entry.sprite ~= nil and entry.sprite.valid),
+                    tostring(entry ~= nil and entry.light ~= nil and entry.light.valid),
+                    entry and #(entry.texts or {}) or 0)
+            end
         end
-        lines[#lines + 1] = string.format('  render: sprite=%s light=%s texts=%d',
-            tostring(s.sprite ~= nil and s.sprite.valid),
-            tostring(s.light ~= nil and s.light.valid),
-            #s.texts)
         local report = table.concat(lines, '\n')
         log(report)
         if cmd.player_index then
