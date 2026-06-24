@@ -1,4 +1,5 @@
 local DebugLog = require 'lib.debug_log'
+local Compat = require 'lib.compat'  
 local M = {}      
 local T = {}      
 local B = {}      
@@ -87,13 +88,10 @@ function Util.add_rate(set, category, type, name, quality, amount, invert, machi
             count_pairs(set_rates), tostring(set_rates[path] ~= nil))
     end
 end
-local function get_fluid(fluidbox, index)
-    local fluid = fluidbox.get_filter(index)
-    if not fluid then
-        fluid = fluidbox[index]
-    end
-    if fluid then
-        return prototypes.fluid[fluid.name]
+local function get_fluid(entity, index)
+    local name = Compat.fluid_name_at(entity, index)
+    if name then
+        return prototypes.fluid[name]
     end
 end
 function Util.process_burner(set, entity, invert, emissions_per_second)
@@ -173,13 +171,12 @@ function Util.process_beacon(set, entity)
 end
 function Util.process_boiler(set, entity, invert)
     local entity_prototype = entity.prototype
-    local fluidbox = entity.fluidbox
-    local input_fluid = get_fluid(fluidbox, 1)
+    local input_fluid = get_fluid(entity, 1)
     if not input_fluid then
         Util.add_error(set, 'no-input-fluid')
         return
     end
-    local minimum_temperature = fluidbox.get_prototype(1).minimum_temperature or input_fluid.default_temperature
+    local minimum_temperature = Compat.fluidbox_prototype(entity, 1).minimum_temperature or input_fluid.default_temperature
     local energy_per_amount = (entity_prototype.target_temperature - minimum_temperature) * input_fluid.heat_capacity
     local fluid_usage = entity_prototype.get_max_energy_usage(entity.quality) / energy_per_amount * 60
     Util.add_rate(set, 'input', 'fluid', input_fluid.name, 'normal', fluid_usage, invert, entity.name)
@@ -188,11 +185,11 @@ function Util.process_boiler(set, entity, invert)
             fluid_usage, invert, entity.name, input_fluid.max_temperature)
         return
     end
-    local output_fluid = get_fluid(fluidbox, 2)
+    local output_fluid = get_fluid(entity, 2)
     if not output_fluid then
         return
     end
-    local min_t = fluidbox.get_prototype(2).minimum_temperature or output_fluid.default_temperature
+    local min_t = Compat.fluidbox_prototype(entity, 2).minimum_temperature or output_fluid.default_temperature
     local epa = (entity_prototype.target_temperature - min_t) * output_fluid.heat_capacity
     local out_usage = entity_prototype.get_max_energy_usage(entity.quality) / epa * 60
     Util.add_rate(set, 'output', 'fluid', output_fluid.name, 'normal', out_usage, invert, entity.name)
@@ -295,12 +292,12 @@ end
 function Util.process_fluid_energy_source(set, entity, invert, emissions_per_second)
     local entity_prototype = entity.prototype
     local fluid_source_prototype = entity_prototype.fluid_energy_source_prototype
-    local fluidbox = entity.fluidbox
+    local fluid_count = Compat.fluidbox_count(entity)
     local fluid_prototype
     if entity.type == 'boiler' then
-        fluid_prototype = get_fluid(fluidbox, #fluidbox)
+        fluid_prototype = get_fluid(entity, fluid_count)
     else
-        fluid_prototype = get_fluid(fluidbox, 1)
+        fluid_prototype = get_fluid(entity, 1)
     end
     if not fluid_prototype then
         Util.add_error(set, 'no-input-fluid')
@@ -312,7 +309,7 @@ function Util.process_fluid_energy_source(set, entity, invert, emissions_per_sec
         if fluid_source_prototype.burns_fluid and fluid_prototype.fuel_value > 0 then
             value = max_energy_usage / (fluid_prototype.fuel_value / 60) / fluid_source_prototype.effectivity
         else
-            local fluid = fluidbox[#fluidbox]
+            local fluid = Compat.fluid_at(entity, fluid_count)
             if not fluid then
                 Util.add_error(set, 'no-input-fluid')
                 return emissions_per_second
@@ -336,7 +333,7 @@ function Util.process_fluid_energy_source(set, entity, invert, emissions_per_sec
 end
 function Util.process_generator(set, entity, invert)
     local entity_prototype = entity.prototype
-    local fluid = get_fluid(entity.fluidbox, 1)
+    local fluid = get_fluid(entity, 1)
     if not fluid then
         Util.add_error(set, 'no-input-fluid')
         return
@@ -460,7 +457,7 @@ function Util.process_mining_drill(set, entity, invert)
     end
 end
 function Util.process_offshore_pump(set, entity, invert)
-    local fluid = entity.fluidbox[1]
+    local fluid = Compat.fluid_at(entity, 1)
     if not fluid then
         return
     end

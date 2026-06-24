@@ -1,6 +1,7 @@
 local Event = require 'lib.event'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
+local Compat = require 'lib.compat'  
 local de = defines.events
 local TOGGLE_ID = 'auto_pipe_connectors'
 local LOOKUP_CODE_VERSION = 2
@@ -57,9 +58,8 @@ local function entity_type_or_ghost_type(entity)
     return entity.type == 'entity-ghost' and entity.ghost_type or entity.type
 end
 local function should_place_based_on_neighbor_fluidbox_prototypes(entity, position)
-    local fluidbox = entity.fluidbox
-    for i = 1, #fluidbox do
-        for _, pipe_connection in pairs(fluidbox.get_pipe_connections(i)) do
+    for i = 1, Compat.fluidbox_count(entity) do
+        for _, pipe_connection in pairs(Compat.pipe_connections(entity, i)) do
             if position[1] == math.floor((pipe_connection.target_position.x + 0.25) * 2) / 2 and
                 position[2] == math.floor((pipe_connection.target_position.y + 0.25) * 2) / 2 then
                 return true
@@ -242,7 +242,7 @@ local function on_built_entity(event)
                 if entity_type == 'fluid-wagon' then
                     goto continue_neighbor_entities
                 end
-                if (entity_type ~= 'pipe' and entity_type ~= 'pipe-to-ground') and (ne.fluidbox and #ne.fluidbox > 0) then
+                if (entity_type ~= 'pipe' and entity_type ~= 'pipe-to-ground') and Compat.has_fluidboxes(ne) then
                     if should_place_based_on_neighbor_fluidbox_prototypes(ne, pipe_position) then
                         place = true
                         DebugLog.log('[auto_pipe_connectors]       MATCH: encja z fluidboxem "%s" (type=%s) ma połączenie rurowe w (%.1f,%.1f).',

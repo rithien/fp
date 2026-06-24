@@ -7,6 +7,7 @@ local Server = require 'lib.server'
 local Constants = require 'constants'
 local Core = require 'lib.antigrief.core'
 local AdminPresence = require 'lib.antigrief.admin_presence'
+local Compat = require 'lib.compat'  
 local AG = Constants.antigrief
 local AUDIT = Constants.audit
 local format = string.format
@@ -99,13 +100,7 @@ local function on_pre_ghost_deconstructed(event)
         return
     end
 end
-local main_inventory_indices = {
-    defines.inventory.chest,
-    defines.inventory.furnace_source,
-    defines.inventory.furnace_result,
-    defines.inventory.assembling_machine_input,
-    defines.inventory.assembling_machine_output,
-}
+local main_inventory_indices = Compat.main_inventory_indices
 local function plain_id(v)
     if type(v) == 'table' then return v.name end
     return v
