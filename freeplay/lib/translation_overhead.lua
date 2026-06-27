@@ -104,13 +104,17 @@ end
 function Public.show(payload)
     local speaker = payload.speaker
     if type(speaker) ~= 'string' or speaker == '' then return end
+    local t = type(payload.t) == 'table' and payload.t or nil
+    local original = type(payload.original) == 'string' and payload.original or nil
     local scale = Public.get_scale()
     local ttl_ticks = math.floor(Public.get_ttl_seconds() * 60)
     local color = Public.get_color_rgb(Public.get_color_key())
     for _, p in pairs(game.connected_players) do
         if p.valid and p.name ~= speaker then  
-            local variant
-            if p.locale == 'pl' then variant = payload.pl else variant = payload.en end
+            local variant = t and t[p.locale]   
+            if type(variant) ~= 'string' or variant == '' then
+                variant = original              
+            end
             if type(variant) == 'string' and variant ~= '' then
                 local surface, target_spec = resolve_anchor(p)  
                 if surface then
