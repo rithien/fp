@@ -5,6 +5,7 @@ local TopButtons = require 'gui.top_buttons'
 local de = defines.events
 local TOGGLE_BUTTON_NAME = 'admin_panel_toggle_button'
 local PANEL_FRAME_NAME = 'admin_panel_frame'
+local TABBED_PANE_NAME = 'admin_panel_tabbed_pane'
 local TOGGLE_BUTTON_ACTION = 'admin_panel_toggle'
 local CLOSE_ACTION = 'admin_panel_close'
 local Public = {}
@@ -320,6 +321,14 @@ local function build_dropdowns_into(parent)
     end
 end
 local function build_panel(player)
+    local prev_tab_index
+    local existing = player.gui.screen[PANEL_FRAME_NAME]
+    if existing and existing.valid then
+        local prev_pane = existing[TABBED_PANE_NAME]
+        if prev_pane and prev_pane.valid then
+            prev_tab_index = prev_pane.selected_tab_index
+        end
+    end
     Gui.destroy_if_exists(player.gui.screen, PANEL_FRAME_NAME)
     local frame = player.gui.screen.add({
         type = 'frame',
@@ -351,7 +360,7 @@ local function build_panel(player)
         tooltip = { 'fp-admin.close-tooltip' },
         tags = { action = CLOSE_ACTION }
     })
-    local tabbed_pane = frame.add({ type = 'tabbed-pane' })
+    local tabbed_pane = frame.add({ type = 'tabbed-pane', name = TABBED_PANE_NAME })
     local actions_tab = tabbed_pane.add({ type = 'tab', caption = { 'fp-admin.tab-actions' } })
     local actions_scroll = make_tab_scroll_pane(tabbed_pane)
     build_actions_into(actions_scroll)
@@ -368,7 +377,7 @@ local function build_panel(player)
     local dropdowns_scroll = make_tab_scroll_pane(tabbed_pane)
     build_dropdowns_into(dropdowns_scroll)
     tabbed_pane.add_tab(dropdowns_tab, dropdowns_scroll)
-    tabbed_pane.selected_tab_index = 1
+    tabbed_pane.selected_tab_index = prev_tab_index or 1
     player.opened = frame
 end
 function Public.refresh_open_panel(player)
