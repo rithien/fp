@@ -1,5 +1,9 @@
 local Compat = {}
-local is_21 = defines.inventory.crafter_input ~= nil
+local base_version = (script and script.active_mods and script.active_mods.base) or '0.0.0'
+local major, minor = base_version:match('^(%d+)%.(%d+)')
+major = tonumber(major) or 0
+minor = tonumber(minor) or 0
+local is_21 = major > 2 or (major == 2 and minor >= 1)
 Compat.new_fluid_api = is_21
 Compat.crafter_inventory = is_21
 Compat.main_inventory_indices = is_21
