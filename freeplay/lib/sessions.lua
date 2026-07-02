@@ -119,7 +119,7 @@ local try_upload_data_token = Token.register(function(data)
     storage.sessions[player_name] = new_time
     storage.online_track[player_name] = player.online_time
 end)
-local nth_tick_token = Token.register(function(data)
+local nth_tick_token = Token.register_named('sessions.nth_tick_upload', function(data)
     local player_name = data.name
     Public.try_ul_data(player_name)
 end)

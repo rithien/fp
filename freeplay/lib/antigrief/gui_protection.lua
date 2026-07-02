@@ -48,7 +48,9 @@ local function is_player_in_vehicle(player, entity)
         if occupant.object_name == 'LuaPlayer' then return occupant == player end
         return occupant == character or (occupant.player and occupant.player == player) or false
     end
-    return is_self(entity.get_driver()) or is_self(entity.get_passenger())
+    if is_self(entity.get_driver()) then return true end
+    if entity.type == 'locomotive' then return false end
+    return is_self(entity.get_passenger())
 end
 local function on_gui_opened(event)
     local entity = event.entity

@@ -42,7 +42,7 @@ local function ensure_storage()
 end
 Event.on_init(ensure_storage)
 Event.on_configuration_changed(ensure_storage)
-local restore_tool_token = Token.register(function(params)
+local restore_tool_token = Token.register_named('rate_calc.restore_tool', function(params)
     local player = game.get_player(params.player_index)
     if not player or not player.valid then return end
     if not storage.rate_calc or not storage.rate_calc.mode[params.player_index] then return end

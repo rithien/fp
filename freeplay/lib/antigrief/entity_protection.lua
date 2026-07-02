@@ -38,7 +38,7 @@ local append_scenario_history = Core.append_scenario_history
 local bind_storage = Core.bind_storage
 local log_admin_override = Core.log_admin_override
 local create_ghost_token =
-    Token.register(
+    Token.register_named('antigrief.create_ghost',
         function (event)
             local player_index = event.player_index
             local player = game.get_player(player_index)
@@ -56,8 +56,7 @@ local create_ghost_token =
             end
             ghost.clone({ position = position, force = player.force, surface = surface, create_build_effect_smoke = false })
             ghost.destroy()
-        end,
-        true
+        end
     )
 local function on_marked_for_deconstruction(event)
     if not event.player_index then return end
@@ -214,6 +213,7 @@ local function recreate_from_snapshot(pending)
         name = pending.name,
         position = pending.position,
         direction = pending.direction,
+        type = pending.belt_side, 
         force = pending.force,
         player = owner,
         spill = false,
@@ -260,6 +260,7 @@ local function place_restore_ghost(surface, pending)
         inner_name = pending.name,
         position = pending.position,
         direction = pending.direction,
+        type = pending.belt_side, 
         force = pending.force,
         player = owner,
         raise_built = false,
@@ -277,7 +278,7 @@ local function notify_online_admins(localised_msg)
     end
 end
 local recreate_retry_token
-recreate_retry_token = Token.register(function(params)
+recreate_retry_token = Token.register_named('antigrief.recreate_retry', function(params)
     local pending = params.pending
     if not pending then return end
     if recreate_from_snapshot(pending) then return end 
@@ -319,7 +320,7 @@ recreate_retry_token = Token.register(function(params)
     log('[Antigrief] ' .. audit_msg)
     notify_online_admins({ 'fp-antigrief.restore-failed-admin',
         pending.name, px .. ',' .. py, blocked_by, ghost and 'ghost placed (rebuild needed)' or 'entity LOST' })
-end, true)
+end)
 local function restore_entity(snapshot, griefer_name)
     if not snapshot then return end
     if recreate_from_snapshot(snapshot) then return end 
@@ -407,12 +408,29 @@ local function on_player_mined_entity(event)
 end
 local function capture_main_contents(entity)
     local out
-    for _, idx in ipairs(main_inventory_indices) do
-        local inv = entity.get_inventory(idx)
-        if inv and inv.valid and not inv.is_empty() then
-            for _, item in pairs(inv.get_contents()) do
-                out = out or {}
-                out[#out + 1] = item
+    local indices
+    local ok_max, max_index = pcall(function() return entity.get_max_inventory_index() end)
+    if ok_max and type(max_index) == 'number' and max_index > 0 then
+        indices = {}
+        for i = 1, max_index do indices[i] = i end
+    else
+        indices = main_inventory_indices
+    end
+    local ok_mod, module_index = pcall(function()
+        local minv = entity.get_module_inventory()
+        return minv and minv.valid and minv.index or nil
+    end)
+    if not ok_mod then module_index = nil end
+    local seen = {}
+    for _, idx in ipairs(indices) do
+        if not seen[idx] and idx ~= module_index then
+            seen[idx] = true
+            local inv = entity.get_inventory(idx)
+            if inv and inv.valid and not inv.is_empty() then
+                for _, item in pairs(inv.get_contents()) do
+                    out = out or {}
+                    out[#out + 1] = item
+                end
             end
         end
     end
@@ -431,6 +449,11 @@ local function capture_entity_state(entity)
         type = entity.type,
         unit_number = entity.unit_number, 
     }
+    if entity.type == 'underground-belt' then
+        snapshot.belt_side = entity.belt_to_ground_type
+    elseif entity.type == 'loader' or entity.type == 'loader-1x1' then
+        snapshot.belt_side = entity.loader_type
+    end
     local ok, recipe, quality = pcall(function() return entity.get_recipe() end)
     if ok and recipe then
         snapshot.recipe_name = recipe.name

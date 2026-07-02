@@ -17,15 +17,20 @@ local function on_tick(event)
     local tick = event.tick
     while cbs[1] and cbs[1].time <= tick do
         local cb = table.remove(cbs, 1)
-        local fn = Token.get(cb.func_token)
-        if fn then
-            xpcall(fn, handler_error, cb.params)
+        if type(cb.func_token) == 'string' then
+            local fn = Token.get(cb.func_token)
+            if fn then
+                xpcall(fn, handler_error, cb.params)
+            end
         end
     end
 end
 function Task.set_timeout_in_ticks(ticks, func_token, params)
     if not game then
         error('cannot call when game is not available', 2)
+    end
+    if type(func_token) ~= 'string' then
+        error('Task.set_timeout_in_ticks: func_token must be a named token (Token.register_named)', 2)
     end
     ensure_init()
     local time = game.tick + ticks

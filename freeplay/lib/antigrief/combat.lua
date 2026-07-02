@@ -170,7 +170,7 @@ local function on_entity_died(event)
     end
 end
 local clear_damage_history_token =
-    Token.register(
+    Token.register_named('antigrief.clear_damage_history',
         function(event)
             local player_index = event.player_index
             local scheduled_tick = event.scheduled_tick

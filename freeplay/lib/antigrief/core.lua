@@ -159,7 +159,7 @@ local function damage_player(player, kill, print_to_all)
     end
 end
 local clear_capsule_warning_token =
-    Token.register(
+    Token.register_named('antigrief.clear_capsule_warning',
         function(event)
             local player_index = event.player_index
             local scheduled_tick = event.scheduled_tick
@@ -203,7 +203,7 @@ local function do_action(player, action_prefix, msg, ban_msg, kill)
         { player_index = idx, scheduled_tick = now })
 end
 local clear_hard_block_warning_token =
-    Token.register(
+    Token.register_named('antigrief.clear_hard_block_warning',
         function(event)
             local player_index = event.player_index
             local scheduled_tick = event.scheduled_tick
@@ -219,7 +219,7 @@ local clear_hard_block_warning_token =
         end
     )
 local clear_hard_block_kick_token =
-    Token.register(
+    Token.register_named('antigrief.clear_hard_block_kick',
         function(event)
             local player_index = event.player_index
             local scheduled_tick = event.scheduled_tick
@@ -295,7 +295,7 @@ local function hard_block_action(player, category, action_msg)
     end
 end
 local clear_tamper_warn_token =
-    Token.register(
+    Token.register_named('antigrief.clear_tamper_warn',
         function(event)
             local player_index = event.player_index
             local scheduled_tick = event.scheduled_tick

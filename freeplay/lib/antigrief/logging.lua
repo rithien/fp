@@ -36,7 +36,7 @@ local get_entities = Core.get_entities
 local append_scenario_history = Core.append_scenario_history
 local bind_storage = Core.bind_storage
 local clear_player_decon_warnings =
-    Token.register(
+    Token.register_named('antigrief.clear_player_decon_warnings',
         function (event)
             local player_index = event.player_index
             if this.players_warn_when_decon[player_index] then
@@ -45,7 +45,7 @@ local clear_player_decon_warnings =
         end
     )
 local clear_players_warn_on_long_texts =
-    Token.register(
+    Token.register_named('antigrief.clear_players_warn_on_long_texts',
         function (event)
             local player_index = event.player_index
             if this.players_warn_on_long_texts[player_index] then

@@ -5,7 +5,6 @@ local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
 local RENDER_VERSION = 6
 local SWEEP_INTERVAL = 600
-local reasserted_after_load = false
 local Public = {}
 local function safe_destroy(obj)
     if obj and obj.valid then obj.destroy() end
@@ -177,10 +176,9 @@ local function ensure()
         return
     end
     local s = storage.spawn_logo
-    if not reasserted_after_load or s.code_version ~= RENDER_VERSION then
+    if s.code_version ~= RENDER_VERSION then
         destroy_all()
         s.code_version = RENDER_VERSION
-        reasserted_after_load = true
     end
     prune_dead_surfaces()
     for _, surface in pairs(target_surfaces()) do
@@ -205,7 +203,7 @@ end
 Event.on_init(ensure)
 Event.on_configuration_changed(ensure)
 Event.add(defines.events.on_player_joined_game, function()
-    ensure()
+    redraw()
 end)
 Event.add(defines.events.on_surface_created, function()
     ensure()
