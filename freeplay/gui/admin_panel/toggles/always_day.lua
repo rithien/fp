@@ -1,5 +1,6 @@
 local AdminPanel = require 'gui.admin_panel'
 local Config = require 'lib.config'
+local Event = require 'lib.event'
 local TOGGLE_ID = 'always_day'
 local function apply(state)
     for _, surface in pairs(game.surfaces) do
@@ -8,6 +9,13 @@ local function apply(state)
         end
     end
 end
+Event.add(defines.events.on_surface_created, function(event)
+    if not Config.is_enabled(TOGGLE_ID) then return end
+    local surface = game.get_surface(event.surface_index)
+    if surface and surface.valid and surface.planet then
+        surface.always_day = true
+    end
+end)
 AdminPanel.register_toggle({
     id = TOGGLE_ID,
     caption = { 'fp-admin.always-day-caption' },

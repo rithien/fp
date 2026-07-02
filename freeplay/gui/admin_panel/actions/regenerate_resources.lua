@@ -62,7 +62,7 @@ ChunkJobs.register('regenerate_resources',
                 surface.name, surface.count_entities_filtered({ type = 'resource' }))
         end
         local queued = player and player.valid
-            and ChunkJobs.enqueue(player, 'regenerate_resources_drills', { extra = { drills = 0 } })
+            and ChunkJobs.enqueue(player, 'regenerate_resources_drills', { extra = { drills = 0 }, surface = surface })
         if not queued then
             local n = 0
             for _, e in pairs(surface.find_entities_filtered({ type = 'mining-drill' })) do

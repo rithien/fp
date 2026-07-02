@@ -239,6 +239,21 @@ function TodoListWindow.toggle(player)
         TodoListWindow.open(player)
     end
 end
+local suppress_list_close = {}
+function TodoListWindow.open_over_list(player, frame)
+    local list = player.gui.screen[WINDOW_NAME]
+    if list and list.valid and player.opened == list then
+        suppress_list_close[player.index] = true
+    end
+    player.opened = frame
+end
+function TodoListWindow.refocus(player)
+    if not player or not player.valid then return end
+    local list = player.gui.screen[WINDOW_NAME]
+    if list and list.valid then
+        player.opened = list
+    end
+end
 function TodoListWindow.refresh(player)
     if not player or not player.valid then return end
     local win = player.gui.screen[WINDOW_NAME]
@@ -289,7 +304,7 @@ local function open_clean_dialog(player)
     Gui.add(buttons, { type = 'button', style = 'back_button',
                        caption = { 'fp-todo-list.clean-cancel' }, tags = { action = CLEAN_CANCEL_ACTION } })
     frame.force_auto_center()
-    player.opened = frame
+    TodoListWindow.open_over_list(player, frame) 
 end
 Gui.on_click(CLOSE_ACTION, function(_, player)
     TodoListWindow.destroy(player)
@@ -339,7 +354,10 @@ Gui.on_click(CLEAN_OPEN_ACTION, function(_, player)
     open_clean_dialog(player)
 end)
 Gui.on_click(CLEAN_CANCEL_ACTION, function(_, player)
-    if player and player.valid then Gui.destroy_if_exists(player.gui.screen, CLEAN_DIALOG_NAME) end
+    if player and player.valid then
+        Gui.destroy_if_exists(player.gui.screen, CLEAN_DIALOG_NAME)
+        TodoListWindow.refocus(player) 
+    end
 end)
 Gui.on_click(CLEAN_CONFIRM_ACTION, function(_, player)
     if not player or not player.valid then return end
@@ -355,6 +373,7 @@ Gui.on_click(CLEAN_CONFIRM_ACTION, function(_, player)
         open = cb_open and cb_open.valid and cb_open.state or false,
     }
     Gui.destroy_if_exists(player.gui.screen, CLEAN_DIALOG_NAME)
+    TodoListWindow.refocus(player) 
     if not which.done and not which.open then return end
     local ok, err = TodoList.clean(player, which)
     after(player, ok, err)
@@ -362,8 +381,15 @@ end)
 Event.add(defines.events.on_gui_closed, function(event)
     local el = event.element
     if not el or not el.valid then return end
-    if el.name == WINDOW_NAME or el.name == CLEAN_DIALOG_NAME then
+    if el.name == WINDOW_NAME then
+        if suppress_list_close[event.player_index] then
+            suppress_list_close[event.player_index] = nil
+            return
+        end
         el.destroy()
+    elseif el.name == CLEAN_DIALOG_NAME then
+        el.destroy()
+        TodoListWindow.refocus(game.get_player(event.player_index)) 
     end
 end)
 return TodoListWindow

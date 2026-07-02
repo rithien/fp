@@ -40,7 +40,10 @@ local function build_assignee_choices(current)
     return items, names, selected
 end
 local function close_dialog(player)
-    if player and player.valid then Gui.destroy_if_exists(player.gui.screen, DIALOG_NAME) end
+    if player and player.valid then
+        Gui.destroy_if_exists(player.gui.screen, DIALOG_NAME)
+        TodoListWindow.refocus(player) 
+    end
 end
 local function open_dialog(player, task)
     if not player or not player.valid then return end
@@ -130,7 +133,7 @@ local function open_dialog(player, task)
         tags = { action = CANCEL_ACTION },
     })
     frame.force_auto_center()
-    player.opened = frame
+    TodoListWindow.open_over_list(player, frame)
     title_field.focus()
 end
 local function do_save(player)
@@ -189,6 +192,7 @@ Event.add(defines.events.on_gui_closed, function(event)
     local el = event.element
     if el and el.valid and el.name == DIALOG_NAME then
         el.destroy()
+        TodoListWindow.refocus(game.get_player(event.player_index)) 
     end
 end)
 local TodoListDialog = {}

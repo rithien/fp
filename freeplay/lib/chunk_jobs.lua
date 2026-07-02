@@ -27,7 +27,8 @@ function ChunkJobs.enqueue(player, kind, opts)
     end
     if not player or not player.valid then return false, 0 end
     opts = opts or {}
-    local surface = player.surface
+    local surface = opts.surface
+    if not (surface and surface.valid) then surface = player.surface end
     if already_queued(kind, surface.index) then
         return false, 0
     end
