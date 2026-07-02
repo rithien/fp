@@ -18,12 +18,26 @@ local function apply_permissions(group)
         group.set_allows_action(id, allow)
     end
 end
+local function apply_new_denies(group)
+    if not storage.untrusted_applied_denies then
+        storage.untrusted_applied_denies = {}
+    end
+    local applied = storage.untrusted_applied_denies
+    for name in pairs(blocked_set) do
+        local id = defines.input_action[name]
+        if id and not applied[name] then
+            group.set_allows_action(id, false)
+            applied[name] = true
+        end
+    end
+end
 function Public.ensure_group()
     local group = game.permissions.get_group(UG.group_name)
     if not group then
         group = game.permissions.create_group(UG.group_name)
         if group then apply_permissions(group) end
     end
+    if group then apply_new_denies(group) end
     return group
 end
 local function route(player, trusted_hint)

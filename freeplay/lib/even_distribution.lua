@@ -1,5 +1,7 @@
 local Event = require 'lib.event'
 local Config = require 'lib.config'
+local AntigriefCore = require 'lib.antigrief.core'
+local AdminPresence = require 'lib.antigrief.admin_presence'
 local de = defines.events
 local TOGGLE_ID = 'even_distribution'
 local DELAY_TICKS = 30
@@ -53,6 +55,9 @@ local function is_eligible(entity, item)
     if not entity or not entity.valid then return false end
     if IGNORED_TYPES[entity.type] then return false end
     return entity.can_insert({ name = item, count = 1 })
+end
+local function blocked_by_antigrief(player, entity)
+    return AntigriefCore.should_hard_block(player, entity) and not AdminPresence.is_permissive()
 end
 local function count_player_items(player, item)
     local total = 0
@@ -177,6 +182,7 @@ Event.add(de.on_selected_entity_changed, function(event)
     if cursor.quality and cursor.quality.name ~= 'normal' then return end 
     local selected = player.selected
     if not is_eligible(selected, cursor.name) then return end
+    if blocked_by_antigrief(player, selected) then return end 
     if not selected.unit_number then return end 
     local cache = get_cache(player.index)
     cache.selectedEvent = {
@@ -201,6 +207,7 @@ Event.add(de.on_player_fast_transferred, function(event)
     local age = event.tick - se.tick
     if age < 0 or age > SNAP_WINDOW then return end
     if not is_eligible(entity, se.item) then return end
+    if blocked_by_antigrief(player, entity) then return end 
     cache.item = se.item
     cache.itemCount = entity.get_item_count(se.item) - se.itemCount 
     cache.cursorStackCount = se.cursorStackCount

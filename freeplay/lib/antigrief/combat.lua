@@ -42,19 +42,33 @@ local chests =
     ['container'] = true,
     ['logistic-container'] = true
 }
-local function driver_player(vehicle)
-    if not (vehicle and vehicle.valid) then return nil end
-    local d = vehicle.get_driver()
-    if not d then return nil end
-    if d.object_name == 'LuaPlayer' then return d end
-    if d.player then return d.player end 
+local function occupant_player(occupant)
+    if not occupant then return nil end
+    if occupant.object_name == 'LuaPlayer' then return occupant end
+    if occupant.player then return occupant.player end 
     return nil
+end
+local function is_exempt(player)
+    if not player or not player.valid then return true end
+    if player.admin then return true end
+    if this.do_not_check_trusted then return true end
+    return Session.get_trusted_player(player) and true or false
+end
+local function vehicle_attacker(vehicle)
+    if not (vehicle and vehicle.valid) then return nil end
+    local driver = occupant_player(vehicle.get_driver())
+    local passenger = occupant_player(vehicle.get_passenger())
+    if not driver then return passenger end
+    if not passenger then return driver end
+    if not is_exempt(driver) then return driver end
+    if not is_exempt(passenger) then return passenger end
+    return driver
 end
 local function resolve_combat_attacker(cause)
     if not (cause and cause.valid) then return nil end
     local t = cause.type
     if t == 'character' then return cause.player end
-    if t == 'car' or t == 'spider-vehicle' then return driver_player(cause) end
+    if t == 'car' or t == 'spider-vehicle' then return vehicle_attacker(cause) end
     return nil
 end
 local function combat_recreate(event)

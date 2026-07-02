@@ -142,8 +142,23 @@ local function on_entity_settings_pasted(event)
         end
     end
 end
+local function on_player_fast_transferred(event)
+    local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end
+    local entity = event.entity
+    if not entity or not entity.valid then return end
+    if gui_open_whitelist[entity.name] then return end
+    if not should_hard_block(player, entity) then return end
+    if AdminPresence.is_permissive() then
+        log_admin_override(player, format(AUDIT.override_fast_transfer, entity.name, get_owner_name(entity)))
+        return
+    end
+    tamper_warn_or_strike(player, 'fast_transfer',
+        format(AUDIT.fast_transfer_tamper, entity.name, get_owner_name(entity)))
+end
 GuiProtection.is_player_in_vehicle = is_player_in_vehicle
 GuiProtection.on_gui_opened = on_gui_opened
 GuiProtection.on_pre_entity_settings_pasted = on_pre_entity_settings_pasted
 GuiProtection.on_entity_settings_pasted = on_entity_settings_pasted
+GuiProtection.on_player_fast_transferred = on_player_fast_transferred
 return GuiProtection

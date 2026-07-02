@@ -11,6 +11,9 @@ Constants.antigrief = {
         ['iron-chest'] = true,
         ['steel-chest'] = true,
     },
+    blocked_vehicles = {
+        ['tank'] = true,
+    },
     long_text_warn_ttl_ticks = 108000,    
     decon_warn_ttl_min_ticks = 7200,      
     decon_warn_ttl_max_ticks = 18000,     
@@ -46,6 +49,7 @@ Constants.untrusted = {
         'drop_blueprint_record',
         'flush_opened_entity_fluid',
         'flush_opened_entity_specific_fluid',
+        'flip_entity',
     },
 }
 Constants.spawn_logo = {
@@ -72,6 +76,8 @@ Constants.audit = {
     combat_destroy = 'tried to destroy %s with weapon/vehicle (owner: %s)', 
     gui_tamper = 'tried to open/modify %s GUI (owner: %s)',  
     paste_tamper = 'tried to paste settings onto %s (owner: %s)', 
+    fast_transfer_tamper = 'tried to fast-transfer items to/from %s (owner: %s)', 
+    flip = 'tried to flip %s (owner: %s)',                   
     mine_restore_ghost = 'placed GHOST of %s at %s,%s surface %s (owner: %s) — tile blocked, victim must rebuild',
     override_mine    = 'admin-override: mined %s (owner: %s)',
     override_decon   = 'admin-override: deconstructed %s (owner: %s)',
@@ -81,6 +87,8 @@ Constants.audit = {
     override_gui     = 'admin-override: opened/modified %s GUI (owner: %s)',
     override_paste   = 'admin-override: pasted settings onto %s (owner: %s)',
     override_combat  = 'admin-override: destroyed %s with weapon/vehicle (owner: %s)',
+    override_fast_transfer = 'admin-override: fast-transferred items to/from %s (owner: %s)', 
+    override_flip    = 'admin-override: flipped %s (owner: %s)', 
     banned_by = 'Banned by %s',                          
     hard_block_ban = 'Hard-block %s: %d strikes ignored after a kick (%s)',
     hard_block_kick = 'Kicked: interfering with %s belonging to other players. Reoffending after reconnect = permanent ban.',
@@ -90,6 +98,7 @@ Constants.audit = {
     jailed_by = 'Jailed by %s',
     nuke_equip = '%s tried to equip nukes but was not trusted.',
     capsule_equip = '%s equipped %s but was not trusted.',
+    vehicle_blocked = '%s tried to drive a %s but was not trusted.', 
     capsule_damage = '%s damaged: %s with: %s',
     corpse_looting = '%s is looting %s´s body.',
     corpse_looted = '%s has looted %s´s body.',

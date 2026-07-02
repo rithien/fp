@@ -42,7 +42,14 @@ local ammo_names =
     ['atomic-bomb'] = true,
     ['cliff-explosives'] = true,
     ['rocket'] = true,
-    ['flamethrower-ammo'] = true
+    ['explosive-rocket'] = true,
+    ['flamethrower-ammo'] = true,
+    ['cannon-shell'] = true,
+    ['explosive-cannon-shell'] = true,
+    ['uranium-cannon-shell'] = true,
+    ['artillery-shell'] = true,
+    ['railgun-ammo'] = true,
+    ['tesla-ammo'] = true,
 }
 local function on_player_ammo_inventory_changed(event)
     local player = game.get_player(event.player_index)
@@ -55,13 +62,9 @@ local function on_player_ammo_inventory_changed(event)
     if Session.get_trusted_player(player) or this.do_not_check_trusted then
         return
     end
-    local playtime = player.online_time
-    if Session.get_session_player(player) then
-        playtime = player.online_time + Session.get_session_player(player)
-    end
-    if playtime < this.required_playtime then
-        if this.enable_capsule_cursor_warning then
-            for ammo_name in pairs(ammo_names) do
+    if this.enable_capsule_cursor_warning then
+        for ammo_name in pairs(ammo_names) do
+            if prototypes.item[ammo_name] then
                 local removed = player.remove_item({ name = ammo_name, count = 1000 })
                 if removed > 0 then
                     if ammo_name == 'atomic-bomb' then
@@ -91,14 +94,8 @@ local function on_built_entity(event)
         if Session.get_trusted_player(player) or this.do_not_check_trusted then
             return
         end
-        local playtime = player.online_time
-        if Session.get_session_player(player) then
-            playtime = player.online_time + Session.get_session_player(player)
-        end
-        if playtime < this.required_playtime then
-            created_entity.destroy()
-            player.print({ 'fp-antigrief.no-blueprint' }, { color = { r = 0.22, g = 0.99, b = 0.99 } })
-        end
+        created_entity.destroy()
+        player.print({ 'fp-antigrief.no-blueprint' }, { color = { r = 0.22, g = 0.99, b = 0.99 } })
     end
 end
 local function on_player_used_capsule(event)
@@ -185,25 +182,43 @@ local function on_player_cursor_stack_changed(event)
         return
     end
     local name = item.name
-    local playtime = player.online_time
-    if Session.get_session_player(player) then
-        playtime = player.online_time + Session.get_session_player(player)
-    end
-    if playtime < this.required_playtime then
-        if this.enable_capsule_cursor_warning then
-            if ammo_names[name] then
-                local item_to_remove = player.remove_item({ name = name, count = 1000 })
-                if item_to_remove > 0 then
-                    action_warning('[Capsule]', format(AUDIT.capsule_equip, player.name, name),
-                        { 'fp-antigrief.capsule', player.name, name })
-                    damage_player(player)
-                end
-            end
+    if this.enable_capsule_cursor_warning and ammo_names[name] then
+        local item_to_remove = player.remove_item({ name = name, count = 1000 })
+        if item_to_remove > 0 then
+            action_warning('[Capsule]', format(AUDIT.capsule_equip, player.name, name),
+                { 'fp-antigrief.capsule', player.name, name })
+            damage_player(player)
         end
     end
+end
+local function on_player_driving_changed_state(event)
+    local player = game.get_player(event.player_index)
+    if not player or not player.valid then
+        return
+    end
+    if not player.driving then
+        return 
+    end
+    if player.admin then
+        return
+    end
+    if Session.get_trusted_player(player) or this.do_not_check_trusted then
+        return
+    end
+    local vehicle = event.entity
+    if not vehicle or not vehicle.valid then
+        return
+    end
+    if not AG.blocked_vehicles or not AG.blocked_vehicles[vehicle.name] then
+        return
+    end
+    player.driving = false
+    action_warning('[Vehicle]', format(AUDIT.vehicle_blocked, player.name, vehicle.name),
+        { 'fp-antigrief.vehicle-blocked', player.name, vehicle.name })
 end
 Weapons.on_player_ammo_inventory_changed = on_player_ammo_inventory_changed
 Weapons.on_built_entity = on_built_entity
 Weapons.on_player_used_capsule = on_player_used_capsule
 Weapons.on_player_cursor_stack_changed = on_player_cursor_stack_changed
+Weapons.on_player_driving_changed_state = on_player_driving_changed_state
 return Weapons

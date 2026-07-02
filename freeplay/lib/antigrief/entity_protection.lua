@@ -574,6 +574,21 @@ local function on_player_rotated_entity(event)
         return
     end
 end
+local function on_player_flipped_entity(event)
+    local entity = event.entity
+    if not entity or not entity.valid then return end
+    local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end
+    if should_hard_block(player, entity) then
+        if AdminPresence.is_permissive() then
+            log_admin_override(player, format(AUDIT.override_flip, entity.name, get_owner_name(entity)))
+            return
+        end
+        hard_block_action(player, 'flip',
+            format(AUDIT.flip, entity.name, get_owner_name(entity)))
+        return
+    end
+end
 local function on_cancelled_deconstruction(event)
     local player_index = event.player_index
     if player_index then
@@ -621,5 +636,6 @@ EntityProtection.capture_entity_state = capture_entity_state
 EntityProtection.on_pre_player_mined_item = on_pre_player_mined_item
 EntityProtection.on_marked_for_upgrade = on_marked_for_upgrade
 EntityProtection.on_player_rotated_entity = on_player_rotated_entity
+EntityProtection.on_player_flipped_entity = on_player_flipped_entity
 EntityProtection.on_cancelled_deconstruction = on_cancelled_deconstruction
 return EntityProtection
