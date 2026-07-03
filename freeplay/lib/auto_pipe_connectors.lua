@@ -256,14 +256,6 @@ local function on_built_entity(event)
         ::bail_neighbor_entities::
         if place then
             matched = true
-            if pipe_entity_definition.name ~= 'entity-ghost' then
-                if inventory then
-                    inventory.remove({ name = pipe_item_name })
-                else
-                    log('[auto_pipe_connectors] postawiono pipe za darmo (gracz ' .. player.name ..
-                        ' nie miał main inventory) — nieoczekiwane, zgłoś buga.')
-                end
-            end
             local tile_failed = false
             if place_tile then
                 tile_failed = not underground_surface.create_entity(tile_ghost_definition)
@@ -275,6 +267,14 @@ local function on_built_entity(event)
             if not tile_failed then
                 local created = underground_surface.create_entity(pipe_entity_definition)
                 if created then
+                    if pipe_entity_definition.name ~= 'entity-ghost' then
+                        if inventory then
+                            inventory.remove({ name = pipe_item_name })
+                        else
+                            log('[auto_pipe_connectors] postawiono pipe za darmo (gracz ' .. player.name ..
+                                ' nie miał main inventory) — nieoczekiwane, zgłoś buga.')
+                        end
+                    end
                     DebugLog.log('[auto_pipe_connectors]   OK: postawiono łącznik %s "%s" na (%.1f,%.1f).',
                         pipe_entity_definition.name == 'entity-ghost' and 'GHOST' or 'REAL',
                         pipe_entity_name, pipe_position[1], pipe_position[2])

@@ -48,6 +48,7 @@ local restore_tool_token = Token.register_named('rate_calc.restore_tool', functi
     if not storage.rate_calc or not storage.rate_calc.mode[params.player_index] then return end
     local stack = player.cursor_stack
     if stack and stack.valid_for_read and (stack.is_blueprint or stack.is_blueprint_book) then
+        if not player.cursor_stack_temporary then return end
         stack.set_stack({ name = SELECTION_TOOL, count = 1 })
     end
 end)
@@ -229,7 +230,7 @@ Event.add(de.on_player_cursor_stack_changed, function(event)
     if stack.name == SELECTION_TOOL then
         return
     end
-    if stack.is_blueprint or stack.is_blueprint_book then
+    if (stack.is_blueprint or stack.is_blueprint_book) and player.cursor_stack_temporary then
         return
     end
     storage.rate_calc.mode[event.player_index] = nil

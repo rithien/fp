@@ -1,6 +1,7 @@
 local AdminPanel = require 'gui.admin_panel'
 local Config = require 'lib.config'
 local Event = require 'lib.event'
+local Constants = require 'constants'
 local de = defines.events
 local TOGGLE_ID = 'blueprints'
 local BLUEPRINT_ACTIONS = {
@@ -9,11 +10,24 @@ local BLUEPRINT_ACTIONS = {
     defines.input_action.import_blueprint,
     defines.input_action.export_blueprint
 }
+local UNTRUSTED_DENY_IDS = {}
+for _, name in ipairs(Constants.untrusted.blocked_actions or {}) do
+    local id = defines.input_action[name]
+    if id then UNTRUSTED_DENY_IDS[id] = true end
+end
 local function apply(state)
-    local group = game.permissions.get_group('Default')
-    if not group then return end
-    for _, action in ipairs(BLUEPRINT_ACTIONS) do
-        group.set_allows_action(action, state and true or false)
+    local default = game.permissions.get_group('Default')
+    if default then
+        for _, action in ipairs(BLUEPRINT_ACTIONS) do
+            default.set_allows_action(action, state and true or false)
+        end
+    end
+    local untrusted = game.permissions.get_group(Constants.untrusted.group_name)
+    if untrusted then
+        for _, action in ipairs(BLUEPRINT_ACTIONS) do
+            local allow = state and not UNTRUSTED_DENY_IDS[action]
+            untrusted.set_allows_action(action, allow and true or false)
+        end
     end
 end
 AdminPanel.register_toggle({

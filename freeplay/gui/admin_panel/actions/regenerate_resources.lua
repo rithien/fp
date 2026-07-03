@@ -39,7 +39,7 @@ ChunkJobs.register('regenerate_resources',
             end
         end
     end,
-    function(surface, _force, player, job)
+    function(surface, force, player, job)
         local solid_finite = {}
         for resource, prototype in pairs(prototypes.get_entity_filtered({ { filter = 'type', type = 'resource' } })) do
             if should_regenerate(prototype) then
@@ -61,17 +61,10 @@ ChunkJobs.register('regenerate_resources',
             DebugLog.log('[regenerate_resources] %s: resource entities PO regenerate = %d',
                 surface.name, surface.count_entities_filtered({ type = 'resource' }))
         end
-        local queued = player and player.valid
-            and ChunkJobs.enqueue(player, 'regenerate_resources_drills', { extra = { drills = 0 }, surface = surface })
+        local queued = ChunkJobs.enqueue(player, 'regenerate_resources_drills',
+            { extra = { drills = 0 }, surface = surface, force = force })
         if not queued then
-            local n = 0
-            for _, e in pairs(surface.find_entities_filtered({ type = 'mining-drill' })) do
-                if e.valid then
-                    e.update_connections()
-                    n = n + 1
-                end
-            end
-            DebugLog.log('[regenerate_resources] %s: fallback update_connections na %d drillach', surface.name, n)
+            DebugLog.log('[regenerate_resources] %s: enqueue jobu drilli nie powiódł się (dedupe?) — bez fallbacku', surface.name)
             if player and player.valid then
                 player.print({ 'fp-admin.regenerate-resources-result', surface.name })
             end

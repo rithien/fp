@@ -6,8 +6,11 @@ ChunkJobs.register('delete_unrevealed_chunks',
     end,
     function(_surface, _force, player, job)
         if player and player.valid then
-            player.print({ 'fp-admin.delete-unrevealed-chunks-result', job.total })
+            player.print({ 'fp-admin.delete-unrevealed-chunks-result', job.processed_count or 0 })
         end
+    end,
+    function(surface, force, cx, cy)
+        return not force.is_chunk_charted(surface, { x = cx, y = cy })
     end
 )
 AdminPanel.register_action({
@@ -21,11 +24,7 @@ AdminPanel.register_action({
         local surface = player.surface
         local force = player.force
         force.cancel_charting(surface)
-        local queued, total = ChunkJobs.enqueue(player, 'delete_unrevealed_chunks', {
-            filter = function(cx, cy)
-                return not force.is_chunk_charted(surface, { x = cx, y = cy })
-            end,
-        })
+        local queued, total = ChunkJobs.enqueue(player, 'delete_unrevealed_chunks')
         if not queued then
             player.print({ 'fp-admin.delete-unrevealed-chunks-busy' })
         else

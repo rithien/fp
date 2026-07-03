@@ -101,6 +101,7 @@ end
 local function give_to_player(player)
     if not player or not player.valid then return false end
     if has_received(player) then return false end
+    if not prototypes.item[ARMOR_NAME] then return false end
     local character = player.character
     if not character or not character.valid then return false end
     local armor_inv = player.get_inventory(ARMOR_INVENTORY)
@@ -137,6 +138,9 @@ AdminPanel.register_toggle({
     end,
     on_change = function(new_state, player)
         Config.set(TOGGLE_ID, new_state)
+        if new_state and not prototypes.item[ARMOR_NAME] then
+            player.print({ 'fp-admin.fast-start-mech-no-sa' }, { color = { r = 1, g = 0.7, b = 0 } })
+        end
         if new_state then
             Config.set('fast_start', false)
             AdminPanel.refresh_open_panel(player)
