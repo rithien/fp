@@ -8,7 +8,7 @@ local raise_event = script.raise_event
 local generate_event_name = script.generate_event_name
 local Event = {}
 local function assert_registration_allowed(what)
-    if _LIFECYCLE >= 7 then
+    if (_LIFECYCLE or 0) >= 7 then
         error('Calling ' .. what .. ' during/after on_configuration_changed or at runtime is a desync risk.', 3)
     end
 end
