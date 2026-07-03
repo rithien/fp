@@ -6,18 +6,18 @@ local core_on_nth_tick = EventCore.on_nth_tick
 local core_on_configuration_changed = EventCore.on_configuration_changed
 local raise_event = script.raise_event
 local generate_event_name = script.generate_event_name
-local get_event_filter = script.get_event_filter
 local Event = {}
-function Event.add(event_name, handler)
-    if _LIFECYCLE == 8 then
-        error('Calling Event.add after on_init() or on_load() has run is a desync risk.', 2)
+local function assert_registration_allowed(what)
+    if _LIFECYCLE >= 7 then
+        error('Calling ' .. what .. ' during/after on_configuration_changed or at runtime is a desync risk.', 3)
     end
+end
+function Event.add(event_name, handler)
+    assert_registration_allowed('Event.add')
     core_add(event_name, handler)
 end
 function Event.on_init(handler)
-    if _LIFECYCLE == 8 then
-        error('Calling Event.on_init after on_init() or on_load() has run is a desync risk.', 2)
-    end
+    assert_registration_allowed('Event.on_init')
     core_on_init(handler)
 end
 function Event.raise(handler, data)
@@ -29,21 +29,15 @@ function Event.raise(handler, data)
     raise_event(handler, data or {})
 end
 function Event.on_load(handler)
-    if _LIFECYCLE == 8 then
-        error('Calling Event.on_load after on_init() or on_load() has run is a desync risk.', 2)
-    end
+    assert_registration_allowed('Event.on_load')
     core_on_load(handler)
 end
 function Event.on_configuration_changed(handler)
-    if _LIFECYCLE == 8 then
-        error('Calling Event.on_configuration_changed after on_init() or on_load() has run is a desync risk.', 2)
-    end
+    assert_registration_allowed('Event.on_configuration_changed')
     core_on_configuration_changed(handler)
 end
 function Event.on_nth_tick(tick, handler)
-    if _LIFECYCLE == 8 then
-        error('Calling Event.on_nth_tick after on_init() or on_load() has run is a desync risk.', 2)
-    end
+    assert_registration_allowed('Event.on_nth_tick')
     core_on_nth_tick(tick, handler)
 end
 function Event.generate_event_name(name)
@@ -52,14 +46,5 @@ function Event.generate_event_name(name)
         defines.events[name] = event_id 
     end
     return event_id
-end
-function Event.add_event_filter(event, filter)
-    local current_filters = get_event_filter(event)
-    if not current_filters then
-        current_filters = { filter }
-    else
-        table.insert(current_filters, filter)
-    end
-    script.set_event_filter(event, current_filters)
 end
 return Event

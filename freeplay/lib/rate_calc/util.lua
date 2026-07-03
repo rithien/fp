@@ -148,6 +148,10 @@ function Util.process_burner(set, entity, invert, emissions_per_second)
         Util.add_error(set, 'no-fuel')
         return emissions_per_second
     end
+    if currently_burning_prototype.fuel_value <= 0 then
+        Util.add_error(set, 'zero-fuel-value')
+        return emissions_per_second
+    end
     local max_energy_usage = entity_prototype.get_max_energy_usage(entity.quality) * (entity.consumption_bonus + 1)
     local burns_per_second = 1
         / (currently_burning_prototype.fuel_value / (max_energy_usage / burner_prototype.effectivity) / 60)
@@ -178,6 +182,10 @@ function Util.process_boiler(set, entity, invert)
     end
     local minimum_temperature = Compat.fluidbox_prototype(entity, 1).minimum_temperature or input_fluid.default_temperature
     local energy_per_amount = (entity_prototype.target_temperature - minimum_temperature) * input_fluid.heat_capacity
+    if energy_per_amount <= 0 then
+        Util.add_error(set, 'zero-energy-fluid')
+        return
+    end
     local fluid_usage = entity_prototype.get_max_energy_usage(entity.quality) / energy_per_amount * 60
     Util.add_rate(set, 'input', 'fluid', input_fluid.name, 'normal', fluid_usage, invert, entity.name)
     if entity_prototype.boiler_mode == 'heat-water-inside' then
@@ -191,6 +199,10 @@ function Util.process_boiler(set, entity, invert)
     end
     local min_t = Compat.fluidbox_prototype(entity, 2).minimum_temperature or output_fluid.default_temperature
     local epa = (entity_prototype.target_temperature - min_t) * output_fluid.heat_capacity
+    if epa <= 0 then 
+        Util.add_error(set, 'zero-energy-fluid')
+        return
+    end
     local out_usage = entity_prototype.get_max_energy_usage(entity.quality) / epa * 60
     Util.add_rate(set, 'output', 'fluid', output_fluid.name, 'normal', out_usage, invert, entity.name)
 end
@@ -378,7 +390,7 @@ function Util.process_mining_drill(set, entity, invert)
     local entity_speed_bonus = entity.speed_bonus
     local radius = entity_prototype.mining_drill_radius + 0.01
     local box = B.from_dimensions(entity.position, radius * 2, radius * 2)
-    local resource_entities = entity.surface.find_entities_filtered({ area = box })
+    local resource_entities = entity.surface.find_entities_filtered({ area = box, type = 'resource' })
     local resource_entities_len = #resource_entities
     if resource_entities_len == 0 then
         Util.add_error(set, 'no-mineable-resources')
@@ -401,12 +413,12 @@ function Util.process_mining_drill(set, entity, invert)
         if not resource_categories[resource_prototype.resource_category] then
             goto continue
         end
-        num_resource_entities = num_resource_entities + 1
         local mineable_properties = resource_prototype.mineable_properties
         local required_fluid = mineable_properties.required_fluid
         if required_fluid and not has_fluidbox then
             goto continue
         end
+        num_resource_entities = num_resource_entities + 1
         resource_data = {
             occurrences = 1,
             products = mineable_properties.products,

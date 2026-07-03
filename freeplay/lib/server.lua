@@ -40,26 +40,29 @@ local function output_data(primary, secondary)
     end
     raw_print(primary .. (secondary or ''))
 end
+local function output_localised(tag, message)
+    localised_print({ '', tag, message })
+end
 function Public.to_discord(message, locale)
-    if locale then print(message, discord_tag) else output_data(discord_tag .. message) end
+    if locale then output_localised(discord_tag, message) else output_data(discord_tag .. message) end
 end
 function Public.to_discord_raw(message, locale)
-    if locale then print(message, discord_raw_tag) else output_data(discord_raw_tag .. message) end
+    if locale then output_localised(discord_raw_tag, message) else output_data(discord_raw_tag .. message) end
 end
 function Public.to_discord_bold(message, locale)
-    if locale then print(message, discord_bold_tag) else output_data(discord_bold_tag .. message) end
+    if locale then output_localised(discord_bold_tag, message) else output_data(discord_bold_tag .. message) end
 end
 function Public.to_admin(message, locale)
-    if locale then print(message, discord_admin_tag) else output_data(discord_admin_tag .. message) end
+    if locale then output_localised(discord_admin_tag, message) else output_data(discord_admin_tag .. message) end
 end
 function Public.to_admin_raw(message, locale)
-    if locale then print(message, discord_admin_raw_tag) else output_data(discord_admin_raw_tag .. message) end
+    if locale then output_localised(discord_admin_raw_tag, message) else output_data(discord_admin_raw_tag .. message) end
 end
 function Public.to_discord_embed(message, locale)
-    if locale then print(message, discord_embed_tag) else output_data(discord_embed_tag .. message) end
+    if locale then output_localised(discord_embed_tag, message) else output_data(discord_embed_tag .. message) end
 end
 function Public.to_discord_embed_raw(message, locale)
-    if locale then print(message, discord_embed_raw_tag) else output_data(discord_embed_raw_tag .. message) end
+    if locale then output_localised(discord_embed_raw_tag, message) else output_data(discord_embed_raw_tag .. message) end
 end
 function Public.to_discord_embed_parsed(message)
     if type(message) ~= 'table' then
@@ -74,16 +77,16 @@ function Public.to_discord_embed_parsed(message)
     output_data(discord_embed_parsed_tag .. helpers.table_to_json(message))
 end
 function Public.to_admin_embed(message, locale)
-    if locale then print(message, discord_admin_embed_tag) else output_data(discord_admin_embed_tag .. message) end
+    if locale then output_localised(discord_admin_embed_tag, message) else output_data(discord_admin_embed_tag .. message) end
 end
 function Public.to_admin_embed_raw(message, locale)
-    if locale then print(message, discord_admin_embed_raw_tag) else output_data(discord_admin_embed_raw_tag .. message) end
+    if locale then output_localised(discord_admin_embed_raw_tag, message) else output_data(discord_admin_embed_raw_tag .. message) end
 end
 function Public.to_discord_antigrief_bold(message, locale)
-    if locale then print(message, discord_antigrief_bold_tag) else output_data(discord_antigrief_bold_tag .. message) end
+    if locale then output_localised(discord_antigrief_bold_tag, message) else output_data(discord_antigrief_bold_tag .. message) end
 end
 function Public.to_discord_antigrief_embed(message, locale)
-    if locale then print(message, discord_antigrief_embed_tag) else output_data(discord_antigrief_embed_tag .. message) end
+    if locale then output_localised(discord_antigrief_embed_tag, message) else output_data(discord_antigrief_embed_tag .. message) end
 end
 function Public.to_discord_antigrief_embed_parsed(message)
     if type(message) ~= 'table' then

@@ -334,6 +334,7 @@ local function log_admin_override(player, action_msg)
     Server.log_antigrief_data('admin_override', log_str, nil, player.name)
 end
 function Core.append_scenario_history(player, entity, message)
+    if not (entity and entity.valid) then return end 
     if not this.scenario_history then
         this.scenario_history = {}
     end
@@ -348,9 +349,9 @@ function Core.append_scenario_history(player, entity, message)
     str = str .. ' Y:'
     str = str .. floor(entity.position.y)
     str = str .. ' '
-    str = str .. 'surface:' .. player.surface.index
+    str = str .. 'surface:' .. entity.surface.index
     increment(this.scenario_history, str)
-    Server.log_antigrief_data('scenario', str, nil, player and player.name or nil)
+    Server.log_antigrief_data('scenario', str, nil, player and player.valid and player.name or nil)
 end
 Core.action_warning = action_warning
 Core.print_to = print_to

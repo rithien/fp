@@ -4,8 +4,8 @@ local counter = 200
 local alternative_counter = 20000
 local custom_prefix = 'comfy_'
 function Token.register(var, sarg)
-    if _LIFECYCLE == 8 then
-        error('Calling Token.register after on_init() or on_load() has run is a desync risk.', 2)
+    if _LIFECYCLE >= 7 then
+        error('Calling Token.register during/after on_configuration_changed or at runtime is a desync risk.', 2)
     end
     if sarg then
         alternative_counter = alternative_counter + 1
@@ -18,8 +18,8 @@ function Token.register(var, sarg)
 end
 local named_tokens = {}
 function Token.register_named(name, var)
-    if _LIFECYCLE == 8 then
-        error('Calling Token.register_named after on_init() or on_load() has run is a desync risk.', 2)
+    if _LIFECYCLE >= 7 then 
+        error('Calling Token.register_named during/after on_configuration_changed or at runtime is a desync risk.', 2)
     end
     if type(name) ~= 'string' then
         error('Token.register_named: name must be a string', 2)

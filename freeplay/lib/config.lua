@@ -17,8 +17,8 @@ function Config.get_default(id)
     return v and true or false
 end
 function Config.is_enabled(id)
-    ensure_storage()
-    local v = storage.toggle_defaults[id]
+    local bag = storage.toggle_defaults
+    local v = bag and bag[id]
     if v == nil then return Config.get_default(id) end
     return v and true or false
 end

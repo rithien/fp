@@ -258,6 +258,7 @@ local function build_sliders_into(parent)
         if not ok or type(val) ~= 'number' then
             val = s.min
         end
+        if val < s.min then val = s.min elseif val > s.max then val = s.max end
         local slider = Gui.add(row, {
             type = 'slider',
             minimum_value = s.min,

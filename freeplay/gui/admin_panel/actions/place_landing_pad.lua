@@ -13,13 +13,16 @@ AdminPanel.register_action({
         end
         local position = (player.selected and player.selected.valid and player.selected.position)
             or { player.position.x + 5, player.position.y }
-        local pad = player.surface.create_entity({
-            name = 'cargo-landing-pad',
-            position = position,
-            force = player.force,
-            raise_built = true,
-        })
-        if pad and pad.valid then
+        local pad
+        local ok = pcall(function()
+            pad = player.surface.create_entity({
+                name = 'cargo-landing-pad',
+                position = position,
+                force = player.force,
+                raise_built = true,
+            })
+        end)
+        if ok and pad and pad.valid then
             player.print({ 'fp-admin.place-landing-pad-result',
                 math.floor(pad.position.x), math.floor(pad.position.y) })
         else

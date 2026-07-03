@@ -320,7 +320,7 @@ local function on_player_deconstructed_area(event)
         str = str .. ' at rb_y:'
         str = str .. floor(area.right_bottom.y)
         str = str .. ' '
-        str = str .. 'surface:' .. player.surface.index
+        str = str .. 'surface:' .. surface.index
         increment(this.deconstruct_history, str)
         Server.log_antigrief_data('deconstruct', str, 'block', player.name)
         if this.enable_jail_when_decon then 
