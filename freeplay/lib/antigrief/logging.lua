@@ -251,6 +251,9 @@ local function on_player_deconstructed_area(event)
     if not game.is_multiplayer() then
         return
     end
+    if event.alt then
+        return
+    end
     local surface = event.surface
     local surface_name = this.decon_surface_blacklist
     if sub(surface.name, 0, #surface_name) ~= surface_name then
@@ -264,7 +267,15 @@ local function on_player_deconstructed_area(event)
         return
     end
     local area = event.area
-    local count = surface.count_entities_filtered({ area = area, type = 'resource', invert = true })
+    local count = 0
+    local candidates = surface.find_entities_filtered({ area = area, force = player.force })
+    for i = 1, #candidates do
+        local candidate = candidates[i]
+        local last_user = candidate.valid and candidate.last_user
+        if last_user and last_user.valid and last_user.name ~= player.name then
+            count = count + 1
+        end
+    end
     local max_count = 0
     local is_trusted = Session.get_trusted_player(player)
     if is_trusted or AdminPresence.is_permissive() then

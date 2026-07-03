@@ -9,6 +9,7 @@ local try_get_data = Server.try_get_data
 local session_data_set = 'sessions'
 local manually_untrusted_data_set = 'manually_untrusted'
 local settings = Constants.sessions
+local UPLOAD_INFLIGHT_TTL_TICKS = 60 * 60
 local Public = {}
 Public.events = {
     on_player_trusted = Event.generate_event_name('on_player_trusted'),
@@ -26,6 +27,8 @@ local function ensure_init()
     storage.online_track = storage.online_track or {}
     storage.trusted = storage.trusted or {}
     storage.manually_untrusted = storage.manually_untrusted or {}
+    storage.sessions_upload_inflight = storage.sessions_upload_inflight or {}
+    storage.sessions_sticky_resolved = storage.sessions_sticky_resolved or {}
 end
 Event.on_init(ensure_init)
 Event.on_configuration_changed(ensure_init)
@@ -55,14 +58,22 @@ local try_download_data_token = Token.register(function(data)
     if value then
         storage.sessions[player_name] = value
         if value > threshold and not storage.manually_untrusted[player_name] then
-            storage.trusted[player_name] = true
+            if storage.sessions_sticky_resolved[player_name] then
+                storage.trusted[player_name] = true
+            else
+                Public.try_dl_manually_untrusted(player_name)
+            end
         end
     else
         local player = game.get_player(player_name)
         if not player or not player.valid then return end
         if player.online_time > threshold and not storage.manually_untrusted[player_name] then
             storage.sessions[player_name] = player.online_time
-            storage.trusted[player_name] = true
+            if storage.sessions_sticky_resolved[player_name] then 
+                storage.trusted[player_name] = true
+            else
+                Public.try_dl_manually_untrusted(player_name)
+            end
             set_data(session_data_set, player_name, player.online_time)
         else
             storage.sessions[player_name] = 0
@@ -77,6 +88,7 @@ end)
 local try_download_manually_untrusted_token = Token.register(function(data)
     ensure_init()
     local player_name = data.key
+    storage.sessions_sticky_resolved[player_name] = true
     if data.value then
         storage.manually_untrusted[player_name] = true
         if storage.trusted[player_name] then
@@ -89,6 +101,7 @@ local try_upload_data_token = Token.register(function(data)
     ensure_init()
     local player_name = data.key
     if not player_name then return end
+    storage.sessions_upload_inflight[player_name] = nil 
     local player = game.get_player(player_name)
     if not player or not player.valid then return end
     if player.online_time <= get_min_save_time() then
@@ -110,9 +123,13 @@ local try_upload_data_token = Token.register(function(data)
     end
     if new_time > Public.get_trusted_threshold() and not storage.manually_untrusted[player_name] then
         if not storage.trusted[player_name] then
-            storage.trusted[player_name] = true
-            notify_trust_refreshed(player_name)
-            Server.notify_trust_change(player_name, true, 'auto')
+            if storage.sessions_sticky_resolved[player_name] then
+                storage.trusted[player_name] = true
+                notify_trust_refreshed(player_name)
+                Server.notify_trust_change(player_name, true, 'auto')
+            else
+                Public.try_dl_manually_untrusted(player_name)
+            end
         end
     end
     set_data(session_data_set, player_name, new_time)
@@ -141,6 +158,12 @@ function Public.try_dl_manually_untrusted(player_name)
 end
 function Public.try_ul_data(player_name)
     player_name = tostring(player_name)
+    ensure_init() 
+    local sent_tick = storage.sessions_upload_inflight[player_name]
+    if sent_tick and game.tick - sent_tick < UPLOAD_INFLIGHT_TTL_TICKS then
+        return
+    end
+    storage.sessions_upload_inflight[player_name] = game.tick
     try_get_data(session_data_set, player_name, try_upload_data_token)
 end
 function Public.exists(player_name)
@@ -213,6 +236,7 @@ Event.add(defines.events.on_player_joined_game, function(event)
     ensure_init()
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
+    storage.sessions_sticky_resolved[player.name] = nil
     Public.try_dl_manually_untrusted(player.name)
 end)
 Event.add(defines.events.on_player_left_game, function(event)
@@ -249,7 +273,11 @@ Server.on_data_set_changed(session_data_set, function(data)
     end
     storage.sessions[data.key] = data.value
     if data.value > Public.get_trusted_threshold() and not storage.manually_untrusted[data.key] then
-        storage.trusted[data.key] = true
+        if storage.sessions_sticky_resolved[data.key] then
+            storage.trusted[data.key] = true
+        else
+            Public.try_dl_manually_untrusted(data.key)
+        end
     else
         storage.trusted[data.key] = nil
     end

@@ -67,8 +67,12 @@ function Core.register_binder(fn) binders[#binders + 1] = fn end
 function Core.state() return this end
 function Core.bind_storage()
     storage.antigrief = storage.antigrief or get_defaults()
-    storage.antigrief.punish_mode = storage.antigrief.punish_mode or Constants.jail.default_punish_mode
     local s = storage.antigrief
+    for k, v in pairs(get_defaults()) do
+        if s[k] == nil then
+            s[k] = v
+        end
+    end
     for i = 1, #binders do binders[i](s) end
 end
 function Core.rebind()
@@ -173,6 +177,14 @@ local clear_capsule_warning_token =
             this.players_warned[player_index] = nil
         end
     )
+local function enforce_punish(player, reason)
+    if not player or not player.valid then return end
+    if this.punish_mode == 'jail' then
+        Jail.jail_player(player.name, reason, 'antigrief')
+    else
+        game.ban_player(player.name, reason)
+    end
+end
 local function do_action(player, action_prefix, msg, ban_msg, kill)
     if not action_prefix or not msg or not ban_msg then
         return
@@ -190,7 +202,7 @@ local function do_action(player, action_prefix, msg, ban_msg, kill)
     elseif count == 1 then
         count = 2
         if this.enable_jail then
-            game.ban_player(player.name, msg) 
+            enforce_punish(player, msg)
         elseif this.enable_autokick then
             game.kick_player(player, msg)
         end
@@ -247,14 +259,6 @@ local function should_hard_block(player, entity)
     if not last_user.valid then return false end
     if last_user.name == player.name then return false end
     return true
-end
-local function enforce_punish(player, reason)
-    if not player or not player.valid then return end
-    if this.punish_mode == 'jail' then
-        Jail.jail_player(player.name, reason, 'antigrief')
-    else
-        game.ban_player(player.name, reason)
-    end
 end
 local function hard_block_action(player, category, action_msg)
     if not player or not player.valid then return end
