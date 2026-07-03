@@ -24,33 +24,53 @@ function Compat.fluidbox_prototype(e, i)
 end
 if Compat.new_fluid_api then
     function Compat.fluid_at(e, i)
-        return e.get_fluid(i)
+        local fl
+        local ok = pcall(function() fl = e.get_fluid(i) end)
+        return ok and fl or nil
     end
     function Compat.fluid_name_at(e, i)
-        local filt = e.get_fluid_filter(i)
-        if filt and filt.fluid then
-            local f = filt.fluid
-            return type(f) == 'string' and f or f.name
-        end
-        local fl = e.get_fluid(i)
-        return fl and fl.name
+        local name
+        local ok = pcall(function()
+            local filt = e.get_fluid_filter(i)
+            if filt and filt.fluid then
+                local f = filt.fluid
+                name = type(f) == 'string' and f or f.name
+            else
+                local fl = e.get_fluid(i)
+                name = fl and fl.name
+            end
+        end)
+        return ok and name or nil
     end
     function Compat.pipe_connections(e, i)
-        return e.get_fluid_box_pipe_connections(i) or {}
+        local conns
+        local ok = pcall(function() conns = e.get_fluid_box_pipe_connections(i) end)
+        return (ok and conns) or {}
     end
 else
     function Compat.fluid_at(e, i)
-        return e.fluidbox[i]
+        local fl
+        local ok = pcall(function() fl = e.fluidbox[i] end)
+        return ok and fl or nil
     end
     function Compat.fluid_name_at(e, i)
-        local fb = e.fluidbox
-        local filt = fb.get_filter(i)
-        if filt then return filt.name end
-        local fl = fb[i]
-        return fl and fl.name
+        local name
+        local ok = pcall(function()
+            local fb = e.fluidbox
+            local filt = fb.get_filter(i)
+            if filt then
+                name = filt.name
+            else
+                local fl = fb[i]
+                name = fl and fl.name
+            end
+        end)
+        return ok and name or nil
     end
     function Compat.pipe_connections(e, i)
-        return e.fluidbox.get_pipe_connections(i) or {}
+        local conns
+        local ok = pcall(function() conns = e.fluidbox.get_pipe_connections(i) end)
+        return (ok and conns) or {}
     end
 end
 return Compat
