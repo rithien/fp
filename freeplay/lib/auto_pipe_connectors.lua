@@ -33,6 +33,14 @@ local directions_to_neighbors = {
         { pos = { -1, -1 }, dir = defines.direction.south },
     },
 }
+local ghost_overlap_ignored_types = {
+    ['tile-ghost'] = true,
+    ['resource'] = true,
+    ['character'] = true,
+    ['item-entity'] = true,
+    ['corpse'] = true,
+    ['character-corpse'] = true,
+}
 local Public = {}
 local rebuild_index
 local function ensure_storage()
@@ -196,7 +204,7 @@ local function on_built_entity(event)
     if placing_ghost then
         local found_entities = underground_surface.find_entities({ pipe_entity_definition.position, pipe_entity_definition.position })
         for _, found_entity in pairs(found_entities) do
-            if found_entity.type ~= 'tile-ghost' then
+            if not ghost_overlap_ignored_types[found_entity.type] then
                 DebugLog.log('[auto_pipe_connectors]   BAIL: na (%.1f,%.1f) jest już encja "%s" (type=%s) — ' ..
                     'nie nadpisujemy jej ghostem łącznika.', pipe_position[1], pipe_position[2],
                     found_entity.name, found_entity.type)

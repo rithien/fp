@@ -1,8 +1,5 @@
 local Session = require 'lib.sessions'
-local Jail = require 'lib.jail'
 local FancyTime = require 'lib.fancy_time'
-local Task = require 'lib.task'
-local Token = require 'lib.token'
 local Server = require 'lib.server'
 local Constants = require 'constants'
 local Core = require 'lib.antigrief.core'
@@ -11,28 +8,14 @@ local AUDIT = Constants.audit
 local format = string.format
 local floor = math.floor
 local abs = math.abs
-local random = math.random
-local match = string.match
-local sub = string.sub
-local color_yellow = { r = 1, g = 1, b = 0 }
 local Weapons = {}
 local this
 Core.register_binder(function(s) this = s end)
-local should_hard_block = Core.should_hard_block
-local hard_block_action = Core.hard_block_action
-local enforce_punish = Core.enforce_punish
-local tamper_warn_or_strike = Core.tamper_warn_or_strike
 local do_action = Core.do_action
 local damage_player = Core.damage_player
-local get_owner_name = Core.get_owner_name
 local action_warning = Core.action_warning
-local print_to = Core.print_to
-local log_msg = Core.log_msg
 local is_logging_muted_for = Core.is_logging_muted_for
-local increment = Core.increment
-local overflow = Core.overflow
 local get_entities = Core.get_entities
-local append_scenario_history = Core.append_scenario_history
 local bind_storage = Core.bind_storage
 local ammo_names =
 {
@@ -143,12 +126,6 @@ local function on_player_used_capsule(event)
             msg = player.name .. ' used ' .. name
         end
         if is_logging_muted_for(player) then return end
-        if not this.capsule_history then
-            this.capsule_history = {}
-        end
-        if this.limit > 0 and #this.capsule_history > this.limit then
-            overflow(this.capsule_history)
-        end
         local t = abs(floor((game.tick) / 60))
         local formatted = FancyTime.short_fancy_time(t)
         local str = '[' .. formatted .. '] '
@@ -159,7 +136,6 @@ local function on_player_used_capsule(event)
         str = str .. floor(position.y)
         str = str .. ' '
         str = str .. 'surface:' .. player.surface.index
-        increment(this.capsule_history, str)
         Server.log_antigrief_data('capsule', str, severity, player.name)
     end
 end

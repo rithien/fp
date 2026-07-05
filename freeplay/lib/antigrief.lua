@@ -1,7 +1,4 @@
 local Event = require 'lib.event'
-local FancyTime = require 'lib.fancy_time'
-local Server = require 'lib.server'
-local Constants = require 'constants'
 local Core = require 'lib.antigrief.core'
 local EntityProtection = require 'lib.antigrief.entity_protection'
 local GuiProtection = require 'lib.antigrief.gui_protection'
@@ -9,12 +6,8 @@ local Combat = require 'lib.antigrief.combat'
 local Weapons = require 'lib.antigrief.weapons'
 local Logging = require 'lib.antigrief.logging'
 local AdminPresence = require 'lib.antigrief.admin_presence'
+local ActionLog = require 'lib.antigrief.action_log'
 local de = defines.events
-local format = string.format
-local floor = math.floor
-local abs = math.abs
-local increment = Core.increment
-local overflow = Core.overflow
 local log_msg = Core.log_msg
 local Public = {}
 local this
@@ -27,41 +20,6 @@ function Public.set_admin_temp_trust(value)
     this.admin_temp_trust = value and true or false
     log_msg('[Antigrief]', this.admin_temp_trust and 'admin-temp-trust enabled' or 'admin-temp-trust disabled')
     AdminPresence.reevaluate()
-end
-function Public.insert_into_capsule_history(player, position, msg)
-    if not this.capsule_history then
-        this.capsule_history = {}
-    end
-    if this.limit > 0 and #this.capsule_history > this.limit then
-        overflow(this.capsule_history)
-    end
-    local t = abs(floor((game.tick) / 60))
-    local formatted = FancyTime.short_fancy_time(t)
-    local str = '[' .. formatted .. '] ' .. msg
-    str = str .. ' at X:'
-    str = str .. floor(position.x)
-    str = str .. ' Y:'
-    str = str .. floor(position.y)
-    str = str .. ' '
-    str = str .. 'surface:' .. player.surface.index
-    increment(this.capsule_history, str)
-    Server.log_antigrief_data('capsule', str, nil, player.name)
-end
-function Public.reset_tables()
-    this.landfill_history = {}
-    this.capsule_history = {}
-    this.friendly_fire_history = {}
-    this.mining_history = {}
-    this.whitelist_mining_history = {}
-    this.corpse_history = {}
-    this.message_history = {}
-    this.cancel_crafting_history = {}
-end
-function Public.whitelist_types(key, value)
-    if key and value then
-        this.whitelist_types[key] = value
-    end
-    return this.whitelist_types[key]
 end
 function Public.do_not_check_trusted(value)
     this.do_not_check_trusted = value or false
@@ -110,16 +68,6 @@ function Public.damage_entity_threshold(value)
     end
     return this.damage_entity_threshold
 end
-function Public.set_limit_per_table(value)
-    if value then
-        if value == 0 then
-            this.limit = 0
-        elseif value > 10 then
-            this.limit = value
-        end
-    end
-    return this.limit
-end
 function Public.get(key)
     if key then
         return this[key]
@@ -137,19 +85,19 @@ function Public.set(key, value)
         return this
     end
 end
-Public.append_scenario_history = Core.append_scenario_history
 Event.on_init(Core.bind_storage)
 Event.on_configuration_changed(Core.bind_storage)
 Event.on_load(Core.rebind)
 Event.on_init(Logging.on_init)
 Event.on_configuration_changed(Logging.apply_default_permission_tweaks)
 Event.on_nth_tick(60, Logging.flush_robot_mining_logs)
+Event.on_nth_tick(60, ActionLog.flush)
 Event.add(de.on_player_mined_entity, EntityProtection.on_player_mined_entity)
 Event.add(de.on_entity_died, Combat.on_entity_died)
 Event.add(de.on_entity_damaged, Combat.on_entity_damaged)
 Event.add(de.on_built_entity, Weapons.on_built_entity)
+Event.add(de.on_built_entity, Logging.on_built_entity)
 Event.add(de.on_gui_opened, GuiProtection.on_gui_opened)
-Event.add(de.on_pre_entity_settings_pasted, GuiProtection.on_pre_entity_settings_pasted)
 Event.add(de.on_entity_settings_pasted, GuiProtection.on_entity_settings_pasted)
 Event.add(de.on_marked_for_deconstruction, EntityProtection.on_marked_for_deconstruction)
 Event.add(de.on_pre_ghost_deconstructed, EntityProtection.on_pre_ghost_deconstructed)

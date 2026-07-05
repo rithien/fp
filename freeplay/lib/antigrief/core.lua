@@ -18,19 +18,6 @@ local function get_defaults()
     return {
         enabled = false,
         max_count_decon = 1500,
-        landfill_history = {},
-        capsule_history = {},
-        friendly_fire_history = {},
-        mining_history = {},
-        whitelist_mining_history = {},
-        corpse_history = {},
-        message_history = {},
-        cancel_crafting_history = {},
-        deconstruct_history = {},
-        scenario_history = {},
-        whisper_history = {},
-        whitelist_types = {},
-        permission_group_editing = {},
         players_warned = {},
         damage_history = {},
         punish_cancel_craft = false,
@@ -43,9 +30,9 @@ local function get_defaults()
         punish_mode = Constants.jail.default_punish_mode,
         enable_capsule_warning = false,
         enable_capsule_cursor_warning = true,
-        required_playtime = AG.required_playtime_ticks,
         capsule_bomb_threshold = AG.capsule_bomb_threshold,
         damage_entity_threshold = AG.damage_entity_threshold,
+        damage_entity_threshold_trusted = AG.damage_entity_threshold_trusted,
         enable_jail_when_decon = true,
         enable_jail_on_long_texts = true,
         filtered_types_on_decon = {},
@@ -53,18 +40,23 @@ local function get_defaults()
         players_warn_when_decon = {},
         players_warn_on_long_texts = {},
         on_cancelled_deconstruction = { tick = 0, count = 0 },
-        limit = AG.history_limit_per_table,
-        admin_button_validation = {},
         robot_mining_pending = {},
         players_warned_hard_block = {},
-        players_warned_tamper = {},
         pending_mine_blocks = {},
+        player_action_pending = {},
     }
 end
 local this
 local binders = {}
 function Core.register_binder(fn) binders[#binders + 1] = fn end
-function Core.state() return this end
+local removed_keys = {
+    'players_warned_tamper',
+    'landfill_history', 'capsule_history', 'friendly_fire_history', 'mining_history',
+    'whitelist_mining_history', 'corpse_history', 'message_history', 'cancel_crafting_history',
+    'deconstruct_history', 'scenario_history', 'whisper_history',
+    'whitelist_types', 'required_playtime', 'limit',
+    'admin_button_validation', 'permission_group_editing',
+}
 function Core.bind_storage()
     storage.antigrief = storage.antigrief or get_defaults()
     local s = storage.antigrief
@@ -72,6 +64,9 @@ function Core.bind_storage()
         if s[k] == nil then
             s[k] = v
         end
+    end
+    for i = 1, #removed_keys do
+        s[removed_keys[i]] = nil
     end
     for i = 1, #binders do binders[i](s) end
 end
@@ -107,12 +102,6 @@ end
 local function is_logging_muted_for(player)
     if not player or not player.valid then return false end
     return player.admin and true or false
-end
-local function increment(t, v)
-    t[#t + 1] = (v or 1)
-end
-local function overflow(t)
-    table.remove(t, 1)
 end
 local function get_entities(item_name, entities)
     local set = {}
@@ -298,33 +287,22 @@ local function hard_block_action(player, category, action_msg)
         player.print({ 'fp-antigrief.hard-block-strike-1', category, strikes, AG.strikes_per_cycle }, { r = 1, g = 1, b = 0 })
     end
 end
-local clear_tamper_warn_token =
-    Token.register_named('antigrief.clear_tamper_warn',
-        function(event)
-            local player_index = event.player_index
-            local scheduled_tick = event.scheduled_tick
-            if not this.players_warned_tamper then return end
-            local entry = this.players_warned_tamper[player_index]
-            if not entry then return end
-            if entry.last_tick ~= scheduled_tick then return end
-            this.players_warned_tamper[player_index] = nil
-        end
-    )
-local function tamper_warn_or_strike(player, category, action_msg)
+local function is_foreign_same_force(player, entity)
+    if not player or not player.valid then return false end
+    if not entity or not entity.valid then return false end
+    if entity.force.name ~= player.force.name then return false end
+    local last_user = entity.last_user
+    if not last_user or not last_user.valid then return false end
+    return last_user.name ~= player.name
+end
+local function log_player_action(player, category, action_msg, entity)
     if not player or not player.valid then return end
-    this.players_warned_tamper = this.players_warned_tamper or {}
-    local entry = this.players_warned_tamper[player.index]
-    local count = (entry and entry.count or 0) + 1
-    local now = game.tick
-    this.players_warned_tamper[player.index] = { count = count, last_tick = now }
-    Task.set_timeout_in_ticks(AG.tamper_warn_ttl_ticks, clear_tamper_warn_token,
-        { player_index = player.index, scheduled_tick = now })
-    if count > AG.tamper_warn_before_strike then
-        hard_block_action(player, category, action_msg)
-    else
-        player.print({ 'fp-antigrief.tamper-warn', category }, color_yellow)
-        Server.log_antigrief_data(category, format('[tamper-warn] %s %s', player.name, action_msg), nil, player.name)
-    end
+    if not entity or not entity.valid then return end
+    local t = abs(floor((game.tick) / 60))
+    local formatted = FancyTime.short_fancy_time(t)
+    local str = format('[%s] %s %s at X:%d Y:%d surface:%d', formatted, player.name, action_msg,
+        floor(entity.position.x), floor(entity.position.y), entity.surface.index)
+    Server.log_antigrief_data(category, str, nil, player.name)
 end
 local function log_admin_override(player, action_msg)
     if not player or not player.valid then return end
@@ -333,32 +311,10 @@ local function log_admin_override(player, action_msg)
     local log_str = format('[%s] %s [admin-override] %s', formatted, player.name, action_msg)
     Server.log_antigrief_data('admin_override', log_str, nil, player.name)
 end
-function Core.append_scenario_history(player, entity, message)
-    if not (entity and entity.valid) then return end 
-    if not this.scenario_history then
-        this.scenario_history = {}
-    end
-    if this.limit > 0 and #this.scenario_history > this.limit + 8000 then
-        overflow(this.scenario_history)
-    end
-    local t = abs(floor((game.tick) / 60))
-    local formatted = FancyTime.short_fancy_time(t)
-    local str = '[' .. formatted .. '] ' .. message
-    str = str .. ' at X:'
-    str = str .. floor(entity.position.x)
-    str = str .. ' Y:'
-    str = str .. floor(entity.position.y)
-    str = str .. ' '
-    str = str .. 'surface:' .. entity.surface.index
-    increment(this.scenario_history, str)
-    Server.log_antigrief_data('scenario', str, nil, player and player.valid and player.name or nil)
-end
 Core.action_warning = action_warning
 Core.print_to = print_to
 Core.log_msg = log_msg
 Core.is_logging_muted_for = is_logging_muted_for
-Core.increment = increment
-Core.overflow = overflow
 Core.get_entities = get_entities
 Core.damage_player = damage_player
 Core.do_action = do_action
@@ -366,7 +322,8 @@ Core.get_owner_name = get_owner_name
 Core.should_hard_block = should_hard_block
 Core.enforce_punish = enforce_punish
 Core.hard_block_action = hard_block_action
-Core.tamper_warn_or_strike = tamper_warn_or_strike
+Core.is_foreign_same_force = is_foreign_same_force
+Core.log_player_action = log_player_action
 Core.log_admin_override = log_admin_override
 Core.get_defaults = get_defaults
 return Core

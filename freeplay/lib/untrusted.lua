@@ -2,12 +2,17 @@ local Event = require 'lib.event'
 local Constants = require 'constants'
 local Session = require 'lib.sessions'
 local Jail = require 'lib.jail'
+local DebugLog = require 'lib.debug_log'
 local UG = Constants.untrusted
 local de = defines.events
 local Public = {}
 local blocked_set = {}
 for _, name in ipairs(UG.blocked_actions or {}) do
     blocked_set[name] = true
+end
+local unblocked_set = {}
+for _, name in ipairs(UG.unblocked_actions or {}) do
+    unblocked_set[name] = true
 end
 local function apply_permissions(group)
     local default = game.permissions.get_group('Default')
@@ -31,13 +36,32 @@ local function apply_new_denies(group)
         end
     end
 end
+local function apply_new_allows(group)
+    if not storage.untrusted_applied_allows then
+        storage.untrusted_applied_allows = {}
+    end
+    local applied = storage.untrusted_applied_allows
+    local denies = storage.untrusted_applied_denies
+    for name in pairs(unblocked_set) do
+        local id = defines.input_action[name]
+        if id and not applied[name] then
+            group.set_allows_action(id, true)
+            applied[name] = true
+            if denies then denies[name] = nil end
+            DebugLog.log('[untrusted] re-allow applied: %s', name)
+        end
+    end
+end
 function Public.ensure_group()
     local group = game.permissions.get_group(UG.group_name)
     if not group then
         group = game.permissions.create_group(UG.group_name)
         if group then apply_permissions(group) end
     end
-    if group then apply_new_denies(group) end
+    if group then
+        apply_new_denies(group)
+        apply_new_allows(group)
+    end
     return group
 end
 local function route(player, trusted_hint)

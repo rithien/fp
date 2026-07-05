@@ -1,5 +1,4 @@
 local Session = require 'lib.sessions'
-local Jail = require 'lib.jail'
 local FancyTime = require 'lib.fancy_time'
 local Task = require 'lib.task'
 local Token = require 'lib.token'
@@ -7,36 +6,25 @@ local Server = require 'lib.server'
 local Constants = require 'constants'
 local Core = require 'lib.antigrief.core'
 local AdminPresence = require 'lib.antigrief.admin_presence'
+local ActionLog = require 'lib.antigrief.action_log'
 local Compat = require 'lib.compat'  
 local AG = Constants.antigrief
 local AUDIT = Constants.audit
 local format = string.format
 local floor = math.floor
 local abs = math.abs
-local random = math.random
-local match = string.match
-local sub = string.sub
-local color_yellow = { r = 1, g = 1, b = 0 }
 local EntityProtection = {}
 local this
 Core.register_binder(function(s) this = s end)
 local should_hard_block = Core.should_hard_block
 local hard_block_action = Core.hard_block_action
-local enforce_punish = Core.enforce_punish
-local tamper_warn_or_strike = Core.tamper_warn_or_strike
-local do_action = Core.do_action
-local damage_player = Core.damage_player
 local get_owner_name = Core.get_owner_name
 local action_warning = Core.action_warning
-local print_to = Core.print_to
-local log_msg = Core.log_msg
 local is_logging_muted_for = Core.is_logging_muted_for
-local increment = Core.increment
-local overflow = Core.overflow
-local get_entities = Core.get_entities
-local append_scenario_history = Core.append_scenario_history
 local bind_storage = Core.bind_storage
 local log_admin_override = Core.log_admin_override
+local is_foreign_same_force = Core.is_foreign_same_force
+local log_player_action = Core.log_player_action
 local create_ghost_token =
     Token.register_named('antigrief.create_ghost',
         function (event)
@@ -62,7 +50,6 @@ local function on_marked_for_deconstruction(event)
     if not event.player_index then return end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-    if this.do_not_check_trusted then return end
     local entity = event.entity
     if not entity or not entity.valid then return end
     if should_hard_block(player, entity) then
@@ -75,6 +62,9 @@ local function on_marked_for_deconstruction(event)
             format(AUDIT.deconstruct_mark, entity.name, get_owner_name(entity)))
         return
     end
+    if is_logging_muted_for(player) then return end
+    if entity.force.name ~= player.force.name then return end
+    ActionLog.queue(player, 'decon', entity)
 end
 local function on_pre_ghost_deconstructed(event)
     bind_storage() 
@@ -355,56 +345,15 @@ local function on_player_mined_entity(event)
     if not entity or not entity.valid then
         return
     end
-    if this.whitelist_types[entity.type] then
-        if not this.whitelist_mining_history then
-            this.whitelist_mining_history = {}
-        end
-        if this.limit > 0 and #this.whitelist_mining_history > this.limit then
-            overflow(this.whitelist_mining_history)
-        end
-        local t = abs(floor((game.tick) / 60))
-        local formatted = FancyTime.short_fancy_time(t)
-        local str = '[' .. formatted .. '] '
-        str = str .. player.name .. ' mined '
-        str = str .. entity.name
-        str = str .. ' at X:'
-        str = str .. floor(entity.position.x)
-        str = str .. ' Y:'
-        str = str .. floor(entity.position.y)
-        str = str .. ' '
-        str = str .. 'surface:' .. entity.surface.index
-        increment(this.whitelist_mining_history, str)
-        Server.log_antigrief_data('whitelist_mining', str, nil, player.name)
-        return
-    end
-    if not entity.last_user then
-        return
-    end
-    if entity.last_user.name == player.name then
-        return
-    end
     if entity.force.name ~= player.force.name then
         return
     end
-    if not this.mining_history then
-        this.mining_history = {}
+    if not entity.last_user or entity.last_user.name == player.name then
+        ActionLog.queue(player, 'mine', entity)
+        return
     end
-    if this.limit > 0 and #this.mining_history > this.limit then
-        overflow(this.mining_history)
-    end
-    local t = abs(floor((game.tick) / 60))
-    local formatted = FancyTime.short_fancy_time(t)
-    local str = '[' .. formatted .. '] '
-    str = str .. player.name .. ' mined '
-    str = str .. event.entity.name
-    str = str .. ' at X:'
-    str = str .. floor(event.entity.position.x)
-    str = str .. ' Y:'
-    str = str .. floor(event.entity.position.y)
-    str = str .. ' '
-    str = str .. 'surface:' .. event.entity.surface.index
-    increment(this.mining_history, str)
-    Server.log_antigrief_data('mining', str, nil, player.name)
+    log_player_action(player, 'mining',
+        format(AUDIT.mined_foreign, entity.name, get_owner_name(entity)), entity)
 end
 local function capture_main_contents(entity)
     local out
@@ -511,12 +460,6 @@ local function on_pre_player_mined_item(event)
     if player.name ~= corpse_owner.name then
         action_warning('[Corpse]', format(AUDIT.corpse_looted, player.name, corpse_owner.name),
             { 'fp-antigrief.corpse-looted', player.name, corpse_owner.name })
-        if not this.corpse_history then
-            this.corpse_history = {}
-        end
-        if this.limit > 0 and #this.corpse_history > this.limit then
-            overflow(this.corpse_history)
-        end
         local t = abs(floor((game.tick) / 60))
         local formatted = FancyTime.short_fancy_time(t)
         local str = '[' .. formatted .. '] '
@@ -528,66 +471,39 @@ local function on_pre_player_mined_item(event)
         str = str .. floor(entity.position.y)
         str = str .. ' '
         str = str .. 'surface:' .. entity.surface.index
-        increment(this.corpse_history, str)
         Server.log_antigrief_data('corpse', str, nil, player.name)
     end
 end
 local function on_marked_for_upgrade(event)
     local entity = event.entity
-    local player_index = event.player_index
-    local player = game.players[player_index]
+    local player = game.players[event.player_index]
     if not (entity and entity.valid) then
         return
     end
     if not (player and player.valid) then
         return
     end
-    if should_hard_block(player, entity) then
-        if AdminPresence.is_permissive() then
-            log_admin_override(player, format(AUDIT.override_upgrade, entity.name, get_owner_name(entity)))
-            return
-        end
-        entity.cancel_upgrade(player.force.name, player.index)
-        local target_name = event.target and event.target.name or '?'
-        hard_block_action(player, 'upgrade',
-            format(AUDIT.upgrade, entity.name, target_name, get_owner_name(entity)))
-        return
-    end
     if is_logging_muted_for(player) then return end
-    local target = event.target
-    if not target then return end
-    append_scenario_history(player, entity, player.name .. ' upgraded entity (' .. entity.name .. ') to target (' .. target.name .. ')')
+    if entity.force.name ~= player.force.name then return end
+    ActionLog.queue(player, 'upgrade', entity)
 end
 local function on_player_rotated_entity(event)
     local entity = event.entity
     if not entity or not entity.valid then return end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-    if should_hard_block(player, entity) then
-        if AdminPresence.is_permissive() then
-            log_admin_override(player, format(AUDIT.override_rotate, entity.name, get_owner_name(entity)))
-            return
-        end
-        entity.direction = event.previous_direction
-        hard_block_action(player, 'rotate',
-            format(AUDIT.rotate, entity.name, get_owner_name(entity)))
-        return
-    end
+    if is_logging_muted_for(player) then return end
+    if not is_foreign_same_force(player, entity) then return end
+    log_player_action(player, 'rotate', format(AUDIT.rotate, entity.name, get_owner_name(entity)), entity)
 end
 local function on_player_flipped_entity(event)
     local entity = event.entity
     if not entity or not entity.valid then return end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-    if should_hard_block(player, entity) then
-        if AdminPresence.is_permissive() then
-            log_admin_override(player, format(AUDIT.override_flip, entity.name, get_owner_name(entity)))
-            return
-        end
-        hard_block_action(player, 'flip',
-            format(AUDIT.flip, entity.name, get_owner_name(entity)))
-        return
-    end
+    if is_logging_muted_for(player) then return end
+    if not is_foreign_same_force(player, entity) then return end
+    log_player_action(player, 'flip', format(AUDIT.flip, entity.name, get_owner_name(entity)), entity)
 end
 local function on_cancelled_deconstruction(event)
     local player_index = event.player_index
