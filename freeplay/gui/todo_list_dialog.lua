@@ -88,6 +88,7 @@ local function open_dialog(player, task)
     })
     desc_field.word_wrap = true
     desc_field.style.horizontally_stretchable = true
+    desc_field.style.maximal_width = 0
     desc_field.style.minimal_height = 100
     desc_field.style.maximal_height = 180
     desc_field.style.bottom_margin = 6
