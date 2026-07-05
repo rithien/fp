@@ -75,9 +75,10 @@ local function open_dialog(player, task)
         type = 'textfield',
         name = TITLE_FIELD,
         text = is_edit and task.title or '',
+        icon_selector = true,
         tags = { action = CONFIRM_ACTION },
     })
-    title_field.style.minimal_width = 380
+    title_field.style.horizontally_stretchable = true
     title_field.style.bottom_margin = 6
     inside.add({ type = 'label', caption = { 'fp-todo-list.field-description' } })
     local desc_field = inside.add({
@@ -86,7 +87,7 @@ local function open_dialog(player, task)
         text = is_edit and (task.description or '') or '',
     })
     desc_field.word_wrap = true
-    desc_field.style.minimal_width = 380
+    desc_field.style.horizontally_stretchable = true
     desc_field.style.minimal_height = 100
     desc_field.style.maximal_height = 180
     desc_field.style.bottom_margin = 6
@@ -99,7 +100,7 @@ local function open_dialog(player, task)
         selected_index = selected,
         tags = { action = ASSIGNEE_NOOP, names = names },
     })
-    dd.style.minimal_width = 200
+    dd.style.horizontally_stretchable = true
     dd.style.bottom_margin = 6
     if is_edit then
         inside.add({ type = 'label', caption = { 'fp-todo-list.created-by', task.created_by } }).style.font_color =

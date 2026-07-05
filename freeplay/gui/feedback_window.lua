@@ -78,7 +78,7 @@ function FeedbackWindow.open(player)
         text = '',
     })
     textbox.word_wrap = true
-    textbox.style.minimal_width = 460
+    textbox.style.horizontally_stretchable = true
     textbox.style.minimal_height = 140
     textbox.style.maximal_height = 220
     local err_label = inside.add({

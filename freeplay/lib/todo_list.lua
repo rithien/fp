@@ -57,7 +57,11 @@ local function sanitize_title(text)
     if trimmed == '' then return nil, 'fp-todo-list.empty-title-error' end
     trimmed = trimmed:gsub('[\r\n]+', ' ')
     local max = Constants.todo_list.max_title_len
-    if #trimmed > max then trimmed = trimmed:sub(1, max) end
+    if #trimmed > max then
+        trimmed = trimmed:sub(1, max)
+        local stripped = trimmed:gsub('%[[^%]]*$', '')
+        if stripped ~= '' then trimmed = stripped end
+    end
     return trimmed, nil
 end
 local function sanitize_description(text)
