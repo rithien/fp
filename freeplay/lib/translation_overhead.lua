@@ -95,7 +95,7 @@ local function draw_for_viewer(surface, target_spec, viewer, text, scale, ttl_ti
         players = { viewer },
         time_to_live = ttl_ticks,
         scale = scale,
-        scale_with_zoom = true,  
+        scale_with_zoom = false,  
         color = color,
         alignment = 'center',
         vertical_alignment = 'bottom',

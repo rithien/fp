@@ -29,6 +29,15 @@ function TodoList.state()
     ensure_storage()
     return storage.todo_list
 end
+function TodoList.counts()
+    ensure_storage()
+    local open = storage.todo_list.open
+    local unassigned = 0
+    for _, task in ipairs(open) do
+        if not task.assignee then unassigned = unassigned + 1 end
+    end
+    return #open, unassigned
+end
 function TodoList.view(player)
     ensure_storage()
     local v = storage.todo_list.view

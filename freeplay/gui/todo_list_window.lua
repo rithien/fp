@@ -261,7 +261,12 @@ function TodoListWindow.refresh(player)
     local body = win[BODY_NAME]
     if body and body.valid then build_body(player, body) end
 end
+local badge_refresher = nil
+function TodoListWindow.register_badge_refresher(fn)
+    badge_refresher = fn
+end
 function TodoListWindow.refresh_all()
+    if badge_refresher then badge_refresher() end
     for _, p in pairs(game.connected_players) do
         TodoListWindow.refresh(p)
     end
