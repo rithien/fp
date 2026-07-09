@@ -16,6 +16,7 @@ return {
     todo_list        = true,   
     circuit_highlight = true,  
     inserter_throughput = true, 
+    belt_visualizer  = true,   
     bp_params        = false,   
     spawn_logo       = true,   
     debug_log        = false,  
