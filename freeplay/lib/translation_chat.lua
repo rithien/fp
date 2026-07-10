@@ -4,7 +4,7 @@ local MODE_CHOICES = {
     { key = 'universal',  caption = { 'fp-admin.chat-mode-universal' } },
     { key = 'per_player', caption = { 'fp-admin.chat-mode-per-player' } },
 }
-local DEFAULT_MODE = 'universal'  
+local DEFAULT_MODE = 'per_player'
 local function is_valid_mode(key)
     for _, c in ipairs(MODE_CHOICES) do
         if c.key == key then return true end
@@ -17,7 +17,7 @@ local function ensure_storage()
         local bag = storage.toggle_defaults
         local old = bag and bag.translate_chat
         if old ~= nil then
-            storage.translation_chat.mode = old and 'universal' or 'off'
+            storage.translation_chat.mode = old and DEFAULT_MODE or 'off'
             bag.translate_chat = nil  
         else
             storage.translation_chat.mode = DEFAULT_MODE

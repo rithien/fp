@@ -72,39 +72,85 @@ local function resolve_anchor(player)
         local surface = player.surface
         if surface and surface.valid then
             local pos = player.position  
-            return surface, { position = { x = pos.x, y = pos.y + OFFSET[2] } }
+            local y = pos.y + OFFSET[2]
+            return surface, { position = { x = pos.x, y = y } }, nil, pos.x, y
         end
     end
     local char = player.character
     if char and char.valid then
-        return char.surface, { entity = char, offset = OFFSET }
+        return char.surface, { entity = char, offset = OFFSET }, char, nil, OFFSET[2]
     end
     local surface = player.surface
     if surface and surface.valid then
         local pos = player.position
-        return surface, { position = { x = pos.x, y = pos.y + OFFSET[2] } }
+        local y = pos.y + OFFSET[2]
+        return surface, { position = { x = pos.x, y = y } }, nil, pos.x, y
     end
-    return nil, nil
+    return nil
 end
 local function viewer_zoom(p)
     local ok, z = pcall(function() return p.zoom end)
     if ok and type(z) == 'number' and z > 0 then return z end
     return 1
 end
-local function draw_for_viewer(surface, target_spec, viewer, text, scale, ttl_ticks, color)
+local MAX_BUBBLES = 3      
+local LINE_HEIGHT = 0.8    
+local function viewer_bubbles(index)
+    ensure_storage()
+    local st = storage.translation_overhead
+    if not st.bubbles then st.bubbles = {} end
+    local kept = {}
+    for _, b in ipairs(st.bubbles[index] or {}) do
+        if b.obj and b.obj.valid and b.expire_tick > game.tick then
+            kept[#kept + 1] = b
+        end
+    end
+    st.bubbles[index] = kept
+    return kept
+end
+local function shift_up(b, delta)
+    if not (b.obj and b.obj.valid) then return end
+    b.y = b.y - delta
+    if b.entity then
+        if b.entity.valid then
+            b.obj.target = { entity = b.entity, offset = { OFFSET[1], b.y } }
+        end
+    else
+        b.obj.target = { position = { x = b.x, y = b.y } }
+    end
+end
+local function draw_for_viewer(viewer, text, scale, ttl_ticks, color)
     if type(text) ~= 'string' or text == '' then return end
-    rendering.draw_text({
+    local surface, target_spec, anchor_entity, base_x, base_y = resolve_anchor(viewer)
+    if not surface then return end
+    local eff_scale = scale / viewer_zoom(viewer)  
+    local list = viewer_bubbles(viewer.index)
+    while #list >= MAX_BUBBLES do
+        local oldest = table.remove(list, 1)
+        if oldest.obj and oldest.obj.valid then oldest.obj.destroy() end
+    end
+    for _, b in ipairs(list) do
+        shift_up(b, LINE_HEIGHT * eff_scale)  
+    end
+    local obj = rendering.draw_text({
         text = text,
         surface = surface,
         target = target_spec,
         players = { viewer },
         time_to_live = ttl_ticks,
-        scale = scale / viewer_zoom(viewer),  
+        scale = eff_scale,
         scale_with_zoom = false,
         color = color,
         alignment = 'center',
         vertical_alignment = 'bottom',
     })
+    list[#list + 1] = {
+        obj = obj,
+        entity = anchor_entity,
+        x = base_x,
+        y = base_y,
+        expire_tick = game.tick + ttl_ticks,
+    }
 end
 function Public.show(payload)
     local speaker = payload.speaker
@@ -121,10 +167,7 @@ function Public.show(payload)
                 variant = original              
             end
             if type(variant) == 'string' and variant ~= '' then
-                local surface, target_spec = resolve_anchor(p)  
-                if surface then
-                    draw_for_viewer(surface, target_spec, p, speaker .. ': ' .. variant, scale, ttl_ticks, color)
-                end
+                draw_for_viewer(p, speaker .. ': ' .. variant, scale, ttl_ticks, color)
             end
         end
     end
