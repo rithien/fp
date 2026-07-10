@@ -8,7 +8,6 @@ return {
     auto_pipe_connectors = true, 
     fast_start       = false,  
     fast_start_mech  = false,  
-    translate_chat     = true,   
     translate_overhead = true,  
     rate_calc        = true,   
     car_finder       = true,   

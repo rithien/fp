@@ -3,6 +3,13 @@ local Server = require 'lib.server'
 local de = defines.events
 local TAG = '[FP-TRANSLATE]'
 local Public = {}
+function Public.emit(speaker_name, text, locales)
+    Server.output_data(TAG .. helpers.table_to_json({
+        speaker = speaker_name,
+        text = text,
+        locales = locales,
+    }))
+end
 local function on_console_chat(event)
     if not event.player_index then return end  
     local speaker = game.get_player(event.player_index)
@@ -21,11 +28,7 @@ local function on_console_chat(event)
         end
     end
     if count < 2 then return end  
-    Server.output_data(TAG .. helpers.table_to_json({
-        speaker = speaker.name,
-        text = message,
-        locales = locales,
-    }))
+    Public.emit(speaker.name, message, locales)
 end
 Public.on_console_chat = on_console_chat
 Event.add(de.on_console_chat, on_console_chat)

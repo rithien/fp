@@ -13,6 +13,7 @@ local toggles = {}
 local actions = {}   
 local sliders = {}   
 local dropdowns = {} 
+local tests = {}     
 local function toggle_action_name(id)
     return 'admin_panel_toggle_' .. id
 end
@@ -27,6 +28,9 @@ local function slider_value_label_name(id)
 end
 local function dropdown_action_name(id)
     return 'admin_panel_dropdown_' .. id
+end
+local function test_action_name(id)
+    return 'admin_panel_test_' .. id
 end
 local function dropdown_preview_name(id)
     return 'admin_panel_dropdown_preview_' .. id
@@ -128,6 +132,35 @@ function Public.register_dropdown(def)
             end
         end
     end)
+end
+function Public.register_test(def)
+    assert(type(def) == 'table', 'admin_panel.register_test: def must be a table')
+    assert(type(def.id) == 'string' and def.id ~= '', 'admin_panel test requires .id (string)')
+    assert(type(def.caption) == 'string' or type(def.caption) == 'table', 'admin_panel test requires .caption (string or LocalisedString)')
+    assert(type(def.on_click) == 'function', 'admin_panel test requires .on_click (function)')
+    assert(def.visible == nil or type(def.visible) == 'function', 'admin_panel test .visible must be a function')
+    table.insert(tests, def)
+    Gui.on_click(test_action_name(def.id), function(_, player)
+        if not player or not player.valid or not player.admin then
+            return
+        end
+        if def.visible and not def.visible(player) then
+            return
+        end
+        def.on_click(player)
+    end)
+end
+local function visible_tests_for(player)
+    local out = {}
+    for _, t in ipairs(tests) do
+        if not t.visible then
+            table.insert(out, t)
+        else
+            local ok, vis = pcall(t.visible, player)
+            if ok and vis then table.insert(out, t) end
+        end
+    end
+    return out
 end
 local function ensure_toggle_button(player)
     if not player or not player.valid then
@@ -321,6 +354,19 @@ local function build_dropdowns_into(parent)
         end
     end
 end
+local function build_tests_into(parent, visible)
+    for _, t in ipairs(visible) do
+        local row = parent.add({ type = 'flow', direction = 'horizontal' })
+        row.style.bottom_padding = 4
+        local btn = Gui.add(row, {
+            type = 'button',
+            caption = t.caption,
+            tooltip = t.tooltip or t.caption,
+            tags = { action = test_action_name(t.id) }
+        })
+        btn.style.minimal_width = 280
+    end
+end
 local function build_panel(player)
     local prev_tab_index
     local existing = player.gui.screen[PANEL_FRAME_NAME]
@@ -378,6 +424,13 @@ local function build_panel(player)
     local dropdowns_scroll = make_tab_scroll_pane(tabbed_pane)
     build_dropdowns_into(dropdowns_scroll)
     tabbed_pane.add_tab(dropdowns_tab, dropdowns_scroll)
+    local visible_tests = visible_tests_for(player)
+    if #visible_tests > 0 then
+        local tests_tab = tabbed_pane.add({ type = 'tab', caption = { 'fp-admin.tab-test' } })
+        local tests_scroll = make_tab_scroll_pane(tabbed_pane)
+        build_tests_into(tests_scroll, visible_tests)
+        tabbed_pane.add_tab(tests_tab, tests_scroll)
+    end
     tabbed_pane.selected_tab_index = prev_tab_index or 1
     player.opened = frame
 end
