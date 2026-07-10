@@ -1,5 +1,6 @@
 local AdminPanel = require 'gui.admin_panel'
 local ChatMode = require 'lib.translation_chat'
+local LocalesMenu = require 'gui.locales_menu'
 AdminPanel.register_dropdown({
     id = 'translate_chat_mode',
     caption = { 'fp-admin.chat-mode-caption' },
@@ -8,6 +9,9 @@ AdminPanel.register_dropdown({
     get_value = function() return ChatMode.get_mode() end,
     on_change = function(key, player)
         ChatMode.set_mode(key)
+        for _, p in pairs(game.connected_players) do
+            LocalesMenu.refresh(p)
+        end
         local label = key  
         for _, c in ipairs(ChatMode.get_mode_choices()) do
             if c.key == key then label = c.caption; break end

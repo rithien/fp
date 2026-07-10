@@ -62,7 +62,7 @@ _G.Sessions = require 'lib.sessions'
 _G.ServerSelect = require 'lib.server_select' 
 Event.on_init(
     function()
-        log('[factorio-polska] scenario loaded — all modules initialized (Faza 2.4)')
+        log('[factorio-polska] scenario loaded — all modules initialized')
         game.print({ 'fp-general.scenario-loaded' })
     end
 )

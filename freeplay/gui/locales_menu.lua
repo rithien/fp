@@ -3,6 +3,7 @@ local Gui = require 'gui.init'
 local Config = require 'lib.config'
 local Overhead = require 'lib.translation_overhead'
 local PlayerLocale = require 'lib.player_locale'
+local ChatMode = require 'lib.translation_chat'
 local TopButtons = require 'gui.top_buttons'
 local de = defines.events
 local BUTTON_NAME = 'locales_top_button'
@@ -28,16 +29,19 @@ local COLOR_CAPTIONS = {
     black  = { 'fp-locales-menu.color-black' },
 }
 local function button_sprite()
-    for _, path in ipairs({ 'virtual-signal/signal-L', 'utility/questionmark' }) do
+    for _, path in ipairs({ 'file/img/gui/locales.png', 'virtual-signal/signal-L' }) do
         if helpers.is_valid_sprite_path(path) then return path end
     end
     return 'utility/side_menu_menu_icon'
+end
+local function has_settings()
+    return Config.is_enabled('translate_overhead') or ChatMode.get_mode() == 'per_player'
 end
 local function ensure_button(player)
     if not player or not player.valid then
         return
     end
-    if not Config.is_enabled('translate_overhead') then
+    if not has_settings() then
         Gui.destroy_if_exists(player.gui.top, BUTTON_NAME)
         Gui.destroy_if_exists(player.gui.screen, WINDOW_NAME)
         return
@@ -109,71 +113,79 @@ local function open(player)
         tooltip = { 'fp-locales-menu.language-tooltip' },
         tags = { action = LANGUAGE_ACTION },
     })
-    Gui.add(inside, {
-        type = 'checkbox',
-        caption = { 'fp-locales-menu.enable-caption' },
-        tooltip = { 'fp-locales-menu.enable-tooltip' },
-        state = not Overhead.is_user_disabled(player.index),
-        tags = { action = ENABLE_ACTION },
-    }).style.bottom_margin = 8
-    local srow = inside.add({ type = 'flow', direction = 'horizontal' })
-    srow.style.vertical_align = 'center'
-    srow.add({
-        type = 'label',
-        caption = { 'fp-locales-menu.size-caption' },
-        tooltip = { 'fp-locales-menu.size-tooltip' },
-    }).style.minimal_width = 90
-    local min_scale, max_scale = Overhead.get_scale_bounds()
-    local val = Overhead.effective_scale(player.index)
-    if val < min_scale then val = min_scale elseif val > max_scale then val = max_scale end
-    local slider = Gui.add(srow, {
-        type = 'slider',
-        minimum_value = min_scale,
-        maximum_value = max_scale,
-        value = val,
-        value_step = 0.2,
-        discrete_slider = true,
-        discrete_values = true,
-        tooltip = { 'fp-locales-menu.size-tooltip' },
-        tags = { action = SCALE_ACTION },
-    })
-    slider.style.minimal_width = 160
-    local vlabel = srow.add({
-        type = 'label',
-        name = SCALE_VALUE_LABEL,
-        caption = string.format('%.1f', val),
-    })
-    vlabel.style.left_padding = 8
-    local crow = inside.add({ type = 'flow', direction = 'horizontal' })
-    crow.style.vertical_align = 'center'
-    crow.style.top_padding = 4
-    crow.add({
-        type = 'label',
-        caption = { 'fp-locales-menu.color-caption' },
-        tooltip = { 'fp-locales-menu.color-tooltip' },
-    }).style.minimal_width = 90
-    local choices = Overhead.get_color_choices()
-    local current = Overhead.get_user_color_key(player.index) or Overhead.get_color_key()
-    local items, selected = {}, 1
-    for i, c in ipairs(choices) do
-        items[i] = COLOR_CAPTIONS[c.key] or c.caption
-        if c.key == current then selected = i end
+    if Config.is_enabled('translate_overhead') then
+        inside.add({ type = 'line', direction = 'horizontal' }).style.bottom_margin = 6
+        inside.add({
+            type = 'label',
+            caption = { 'fp-locales-menu.bubbles-section' },
+            style = 'caption_label',
+        }).style.bottom_margin = 4
+        Gui.add(inside, {
+            type = 'checkbox',
+            caption = { 'fp-locales-menu.enable-caption' },
+            tooltip = { 'fp-locales-menu.enable-tooltip' },
+            state = not Overhead.is_user_disabled(player.index),
+            tags = { action = ENABLE_ACTION },
+        }).style.bottom_margin = 8
+        local srow = inside.add({ type = 'flow', direction = 'horizontal' })
+        srow.style.vertical_align = 'center'
+        srow.add({
+            type = 'label',
+            caption = { 'fp-locales-menu.size-caption' },
+            tooltip = { 'fp-locales-menu.size-tooltip' },
+        }).style.minimal_width = 90
+        local min_scale, max_scale = Overhead.get_scale_bounds()
+        local val = Overhead.effective_scale(player.index)
+        if val < min_scale then val = min_scale elseif val > max_scale then val = max_scale end
+        local slider = Gui.add(srow, {
+            type = 'slider',
+            minimum_value = min_scale,
+            maximum_value = max_scale,
+            value = val,
+            value_step = 0.2,
+            discrete_slider = true,
+            discrete_values = true,
+            tooltip = { 'fp-locales-menu.size-tooltip' },
+            tags = { action = SCALE_ACTION },
+        })
+        slider.style.minimal_width = 160
+        local vlabel = srow.add({
+            type = 'label',
+            name = SCALE_VALUE_LABEL,
+            caption = string.format('%.1f', val),
+        })
+        vlabel.style.left_padding = 8
+        local crow = inside.add({ type = 'flow', direction = 'horizontal' })
+        crow.style.vertical_align = 'center'
+        crow.style.top_padding = 4
+        crow.add({
+            type = 'label',
+            caption = { 'fp-locales-menu.color-caption' },
+            tooltip = { 'fp-locales-menu.color-tooltip' },
+        }).style.minimal_width = 90
+        local choices = Overhead.get_color_choices()
+        local current = Overhead.get_user_color_key(player.index) or Overhead.get_color_key()
+        local items, selected = {}, 1
+        for i, c in ipairs(choices) do
+            items[i] = COLOR_CAPTIONS[c.key] or c.caption
+            if c.key == current then selected = i end
+        end
+        Gui.add(crow, {
+            type = 'drop-down',
+            items = items,
+            selected_index = selected,
+            tooltip = { 'fp-locales-menu.color-tooltip' },
+            tags = { action = COLOR_ACTION },
+        })
+        local preview = crow.add({
+            type = 'label',
+            name = COLOR_PREVIEW_NAME,
+            caption = { 'fp-locales-menu.preview-sample' },
+        })
+        preview.style.left_padding = 8
+        local rgb = Overhead.get_color_rgb(current)
+        if rgb then preview.style.font_color = rgb end
     end
-    Gui.add(crow, {
-        type = 'drop-down',
-        items = items,
-        selected_index = selected,
-        tooltip = { 'fp-locales-menu.color-tooltip' },
-        tags = { action = COLOR_ACTION },
-    })
-    local preview = crow.add({
-        type = 'label',
-        name = COLOR_PREVIEW_NAME,
-        caption = { 'fp-locales-menu.preview-sample' },
-    })
-    preview.style.left_padding = 8
-    local rgb = Overhead.get_color_rgb(current)
-    if rgb then preview.style.font_color = rgb end
     local rrow = inside.add({ type = 'flow', direction = 'horizontal' })
     rrow.style.top_padding = 8
     Gui.add(rrow, {
@@ -189,7 +201,7 @@ function Public.refresh(player)
 end
 Gui.on_click(CLICK_ACTION, function(_, player)
     if not player or not player.valid then return end
-    if not Config.is_enabled('translate_overhead') then return end
+    if not has_settings() then return end
     local existing = player.gui.screen[WINDOW_NAME]
     if existing and existing.valid then
         existing.destroy()  
