@@ -1,3 +1,4 @@
+local PlayerLocale = require 'lib.player_locale'
 local Public = {}
 local MODE_CHOICES = {
     { key = 'off',        caption = { 'fp-admin.chat-mode-off' } },
@@ -49,7 +50,7 @@ function Public.show_per_player(payload)
     if not t then return end
     for _, p in pairs(game.connected_players) do
         if p.valid and p.name ~= speaker then
-            local variant = t[p.locale]
+            local variant = t[PlayerLocale.effective(p)]  
             if type(variant) == 'string' and variant ~= '' then
                 p.print(speaker .. ': ' .. variant)
             end

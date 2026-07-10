@@ -2,6 +2,7 @@ local Event = require 'lib.event'
 local Gui = require 'gui.init'
 local Config = require 'lib.config'
 local Overhead = require 'lib.translation_overhead'
+local PlayerLocale = require 'lib.player_locale'
 local TopButtons = require 'gui.top_buttons'
 local de = defines.events
 local BUTTON_NAME = 'locales_top_button'
@@ -13,6 +14,7 @@ local SCALE_ACTION = 'locales_menu_scale'
 local SCALE_VALUE_LABEL = 'locales_menu_scale_value'
 local COLOR_ACTION = 'locales_menu_color'
 local COLOR_PREVIEW_NAME = 'locales_menu_color_preview'
+local LANGUAGE_ACTION = 'locales_menu_language'
 local RESET_ACTION = 'locales_menu_reset'
 local Public = {}
 local COLOR_CAPTIONS = {
@@ -85,6 +87,28 @@ local function open(player)
     })
     inside.style.padding = 12
     inside.style.minimal_width = 340
+    local lrow = inside.add({ type = 'flow', direction = 'horizontal' })
+    lrow.style.vertical_align = 'center'
+    lrow.style.bottom_padding = 8
+    lrow.add({
+        type = 'label',
+        caption = { 'fp-locales-menu.language-caption' },
+        tooltip = { 'fp-locales-menu.language-tooltip' },
+    }).style.minimal_width = 90
+    local lang_choices = PlayerLocale.get_choices()
+    local override = PlayerLocale.get_override(player.index)
+    local lang_items, lang_selected = { { 'fp-locales-menu.language-default' } }, 1
+    for i, l in ipairs(lang_choices) do
+        lang_items[i + 1] = l.name
+        if l.key == override then lang_selected = i + 1 end
+    end
+    Gui.add(lrow, {
+        type = 'drop-down',
+        items = lang_items,
+        selected_index = lang_selected,
+        tooltip = { 'fp-locales-menu.language-tooltip' },
+        tags = { action = LANGUAGE_ACTION },
+    })
     Gui.add(inside, {
         type = 'checkbox',
         caption = { 'fp-locales-menu.enable-caption' },
@@ -177,6 +201,20 @@ Gui.on_click(CLOSE_ACTION, function(_, player)
     if not player or not player.valid then return end
     Gui.destroy_if_exists(player.gui.screen, WINDOW_NAME)
 end)
+Gui.on_selection_state_changed(LANGUAGE_ACTION, function(event, player)
+    if not player or not player.valid then return end
+    local element = event.element
+    if not element or not element.valid then return end
+    local idx = element.selected_index
+    if idx <= 1 then
+        PlayerLocale.set_override(player.index, nil)  
+        return
+    end
+    local choice = PlayerLocale.get_choices()[idx - 1]  
+    if choice then
+        PlayerLocale.set_override(player.index, choice.key)
+    end
+end)
 Gui.on_checked_state_changed(ENABLE_ACTION, function(event, player)
     if not player or not player.valid then return end
     local element = event.element
@@ -215,6 +253,7 @@ end)
 Gui.on_click(RESET_ACTION, function(_, player)
     if not player or not player.valid then return end
     Overhead.reset_user(player.index)
+    PlayerLocale.set_override(player.index, nil)  
     open(player)  
 end)
 Event.add(de.on_gui_closed, function(event)

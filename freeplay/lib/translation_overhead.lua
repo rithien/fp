@@ -1,3 +1,4 @@
+local PlayerLocale = require 'lib.player_locale'
 local Public = {}
 local OFFSET = { 0, -2.5 }       
 local DEFAULT_SCALE, MIN_SCALE, MAX_SCALE = 1.2, 0.8, 4.0       
@@ -210,7 +211,7 @@ function Public.show(payload)
     local ttl_ticks = math.floor(Public.get_ttl_seconds() * 60)
     for _, p in pairs(game.connected_players) do
         if p.valid and p.name ~= speaker and not Public.is_user_disabled(p.index) then
-            local variant = t and t[p.locale]   
+            local variant = t and t[PlayerLocale.effective(p)]  
             if type(variant) ~= 'string' or variant == '' then
                 variant = original              
             end

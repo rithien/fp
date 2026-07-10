@@ -1,5 +1,6 @@
 local Event = require 'lib.event'
 local Server = require 'lib.server'
+local PlayerLocale = require 'lib.player_locale'
 local de = defines.events
 local TAG = '[FP-TRANSLATE]'
 local Public = {}
@@ -19,7 +20,7 @@ local function on_console_chat(event)
     local seen, locales, count = {}, {}, 0
     for _, p in pairs(game.connected_players) do
         if p.valid then
-            local loc = p.locale
+            local loc = PlayerLocale.effective(p)
             if type(loc) == 'string' and loc ~= '' and not seen[loc] then
                 seen[loc] = true
                 count = count + 1

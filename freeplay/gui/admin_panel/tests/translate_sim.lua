@@ -1,6 +1,7 @@
 local AdminPanel = require 'gui.admin_panel'
 local Emit = require 'lib.translate_chat_emit'
 local Sink = require 'lib.translation_sink'
+local PlayerLocale = require 'lib.player_locale'
 local TESTER_NAME = 'rithien3'   
 local SPEAKER = 'TestBot'        
 local TEST_TEXT = {
@@ -11,7 +12,7 @@ local function is_tester(player)
     return player.name == TESTER_NAME
 end
 local function player_locale(player)
-    local loc = player.locale
+    local loc = PlayerLocale.effective(player)
     if type(loc) == 'string' and loc ~= '' then return loc end
     return 'en'
 end
