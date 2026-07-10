@@ -235,4 +235,18 @@ Event.add(de.on_player_cursor_stack_changed, function(event)
     end
     storage.rate_calc.mode[event.player_index] = nil
 end)
+local function clear_player_mode(event)
+    ensure_storage()
+    if not storage.rate_calc.mode[event.player_index] then return end
+    storage.rate_calc.mode[event.player_index] = nil
+    local player = game.get_player(event.player_index)
+    if player and player.valid then
+        local stack = player.cursor_stack
+        if stack and stack.valid_for_read and stack.name == SELECTION_TOOL then
+            player.clear_cursor()
+        end
+    end
+end
+Event.add(de.on_player_left_game, clear_player_mode)
+Event.add(de.on_player_removed, clear_player_mode)
 return RateCalc

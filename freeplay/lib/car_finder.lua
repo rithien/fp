@@ -42,7 +42,6 @@ local function find_vehicle_infos(player)
     local vehicles = player.surface.find_entities_filtered({
         type = { 'car', 'spider-vehicle' },
         force = player.force.name,
-        limit = MAX_RESULTS,
     })
     local infos = {}
     for _, entity in pairs(vehicles) do
@@ -95,14 +94,13 @@ end
 local function print_all_vehicles(player)
     local infos = find_vehicle_infos(player)
     player.print({ 'fp-car-finder.notify-searching' })
-    local count = 0
-    for _, info in pairs(infos) do
-        print_vehicle_summary(player, info)
-        count = count + 1
+    local count = math.min(#infos, MAX_RESULTS)
+    for i = 1, count do
+        print_vehicle_summary(player, infos[i])
     end
     if count == 0 then
         player.print({ 'fp-car-finder.result-none' })
-    elseif count >= MAX_RESULTS then
+    elseif #infos > MAX_RESULTS then
         player.print({ 'fp-car-finder.result-overflow' })
     end
 end

@@ -24,8 +24,8 @@ local function on_gui_opened(event)
     if not corpse_owner then return end
     if corpse_owner.force.name ~= player.force.name then return end
     if player.controller_type == defines.controllers.spectator then return end
-    local corpse_content = #entity.get_inventory(defines.inventory.character_corpse)
-    if corpse_content <= 0 then return end
+    local corpse_inv = entity.get_inventory(defines.inventory.character_corpse)
+    if not corpse_inv or not corpse_inv.valid or corpse_inv.is_empty() then return end
     if player.name ~= corpse_owner.name then
         action_warning('[Corpse]', format(AUDIT.corpse_looting, player.name, corpse_owner.name),
             { 'fp-antigrief.corpse-looting', player.name, corpse_owner.name })

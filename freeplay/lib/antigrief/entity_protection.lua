@@ -450,8 +450,8 @@ local function on_pre_player_mined_item(event)
     if not corpse_owner then
         return
     end
-    local corpse_content = #entity.get_inventory(defines.inventory.character_corpse)
-    if corpse_content <= 0 then
+    local corpse_inv = entity.get_inventory(defines.inventory.character_corpse)
+    if not corpse_inv or not corpse_inv.valid or corpse_inv.is_empty() then
         return
     end
     if corpse_owner.force.name ~= player.force.name then

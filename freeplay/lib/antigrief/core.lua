@@ -253,9 +253,16 @@ local function hard_block_action(player, category, action_msg)
     if not player or not player.valid then return end
     this.players_warned_hard_block = this.players_warned_hard_block or {}
     local entry = this.players_warned_hard_block[player.index]
+    local now = game.tick
+    if entry and entry.last_strike_tick == now then
+        local t0 = abs(floor(now / 60))
+        Server.log_antigrief_data(category,
+            format('[%s] %s [strike dedup] %s', FancyTime.short_fancy_time(t0), player.name, action_msg),
+            nil, player.name)
+        return
+    end
     local strikes = (entry and entry.count or 0) + 1
     local kicks = (entry and entry.kicks or 0)
-    local now = game.tick
     this.players_warned_hard_block[player.index] = { count = strikes, kicks = kicks, last_strike_tick = now }
     Task.set_timeout_in_ticks(AG.strike_ttl_ticks, clear_hard_block_warning_token,
         { player_index = player.index, scheduled_tick = now })

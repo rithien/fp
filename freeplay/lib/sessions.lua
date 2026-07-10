@@ -77,7 +77,6 @@ local try_download_data_token = Token.register(function(data)
             set_data(session_data_set, player_name, player.online_time)
         else
             storage.sessions[player_name] = 0
-            storage.trusted[player_name] = nil
             if player.online_time >= get_min_save_time() then
                 set_data(session_data_set, player_name, storage.sessions[player_name])
             end
