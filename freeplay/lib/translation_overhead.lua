@@ -86,6 +86,11 @@ local function resolve_anchor(player)
     end
     return nil, nil
 end
+local function viewer_zoom(p)
+    local ok, z = pcall(function() return p.zoom end)
+    if ok and type(z) == 'number' and z > 0 then return z end
+    return 1
+end
 local function draw_for_viewer(surface, target_spec, viewer, text, scale, ttl_ticks, color)
     if type(text) ~= 'string' or text == '' then return end
     rendering.draw_text({
@@ -94,8 +99,8 @@ local function draw_for_viewer(surface, target_spec, viewer, text, scale, ttl_ti
         target = target_spec,
         players = { viewer },
         time_to_live = ttl_ticks,
-        scale = scale,
-        scale_with_zoom = false,  
+        scale = scale / viewer_zoom(viewer),  
+        scale_with_zoom = false,
         color = color,
         alignment = 'center',
         vertical_alignment = 'bottom',
