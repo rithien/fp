@@ -67,6 +67,56 @@ function Public.set_color_key(key)
     ensure_storage()
     storage.translation_overhead.color_key = key
 end
+local function user_bag(index)
+    local st = storage.translation_overhead
+    local u = st and st.user
+    return u and u[index] or nil
+end
+local function ensure_user_bag(index)
+    ensure_storage()
+    local st = storage.translation_overhead
+    if not st.user then st.user = {} end
+    if not st.user[index] then st.user[index] = {} end
+    return st.user[index]
+end
+function Public.get_user_scale(index)
+    local b = user_bag(index)
+    local v = b and b.scale
+    if type(v) == 'number' then return v end
+    return nil
+end
+function Public.set_user_scale(index, v)
+    if type(v) ~= 'number' then return end
+    if v < MIN_SCALE then v = MIN_SCALE elseif v > MAX_SCALE then v = MAX_SCALE end
+    ensure_user_bag(index).scale = math.floor(v * 10 + 0.5) / 10  
+end
+function Public.get_user_color_key(index)
+    local b = user_bag(index)
+    local k = b and b.color_key
+    if type(k) == 'string' and rgb_for_key(k) then return k end
+    return nil
+end
+function Public.set_user_color_key(index, key)
+    if type(key) ~= 'string' or not rgb_for_key(key) then return end
+    ensure_user_bag(index).color_key = key
+end
+function Public.is_user_disabled(index)
+    local b = user_bag(index)
+    return b ~= nil and b.disabled == true
+end
+function Public.set_user_disabled(index, disabled)
+    ensure_user_bag(index).disabled = disabled and true or nil
+end
+function Public.reset_user(index)
+    local st = storage.translation_overhead
+    if st and st.user then st.user[index] = nil end
+end
+function Public.effective_scale(index)
+    return Public.get_user_scale(index) or Public.get_scale()
+end
+function Public.effective_color_rgb(index)
+    return rgb_for_key(Public.get_user_color_key(index) or Public.get_color_key())
+end
 local function resolve_anchor(player)
     if player.controller_type == defines.controllers.remote then
         local surface = player.surface
@@ -157,17 +207,16 @@ function Public.show(payload)
     if type(speaker) ~= 'string' or speaker == '' then return end
     local t = type(payload.t) == 'table' and payload.t or nil
     local original = type(payload.original) == 'string' and payload.original or nil
-    local scale = Public.get_scale()
     local ttl_ticks = math.floor(Public.get_ttl_seconds() * 60)
-    local color = Public.get_color_rgb(Public.get_color_key())
     for _, p in pairs(game.connected_players) do
-        if p.valid and p.name ~= speaker then  
+        if p.valid and p.name ~= speaker and not Public.is_user_disabled(p.index) then
             local variant = t and t[p.locale]   
             if type(variant) ~= 'string' or variant == '' then
                 variant = original              
             end
             if type(variant) == 'string' and variant ~= '' then
-                draw_for_viewer(p, speaker .. ': ' .. variant, scale, ttl_ticks, color)
+                draw_for_viewer(p, speaker .. ': ' .. variant,
+                    Public.effective_scale(p.index), ttl_ticks, Public.effective_color_rgb(p.index))
             end
         end
     end
