@@ -19,7 +19,7 @@ local function ensure_storage()
     if not storage.belt_visualizer then
         storage.belt_visualizer = {
             players = {},      
-            user_disabled = {}, 
+            user_enabled = {}, 
             in_progress = {},  
             refresh = {},      
             clear = {},        
@@ -27,7 +27,8 @@ local function ensure_storage()
     else
         local bv = storage.belt_visualizer
         bv.players = bv.players or {}
-        bv.user_disabled = bv.user_disabled or {}
+        bv.user_enabled = bv.user_enabled or {}
+        bv.user_disabled = nil
         bv.in_progress = bv.in_progress or {}
         bv.refresh = bv.refresh or {}
         bv.clear = bv.clear or {}
@@ -78,18 +79,18 @@ function Public.is_enabled()
 end
 function Public.is_user_enabled(index)
     ensure_storage()
-    return not storage.belt_visualizer.user_disabled[index]
+    return storage.belt_visualizer.user_enabled[index] == true
 end
 function Public.toggle_user(index)
     ensure_storage()
-    local disabled = storage.belt_visualizer.user_disabled
-    if disabled[index] then
-        disabled[index] = nil
-    else
-        disabled[index] = true
+    local enabled = storage.belt_visualizer.user_enabled
+    if enabled[index] then
+        enabled[index] = nil
         clear_player(index)
+    else
+        enabled[index] = true
     end
-    return not disabled[index]
+    return enabled[index] == true
 end
 function Public.is_active_for(index)
     return Config.is_enabled(TOGGLE_ID) and Public.is_user_enabled(index)
