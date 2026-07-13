@@ -4,7 +4,12 @@ local config = require 'lib.mandatory_spaghetti.config'
 local M = {}
 if not config.enabled then return M end
 local de = defines.events
-local MSG_COLOR = { r = 1, g = 0.35, b = 0.35 }
+local MSG_COLOR = { r = 0.6, g = 0.95, b = 0.8 } 
+local REASON_MSG = {
+    pattern = { 'fp-mandatory-spaghetti.died-pattern' },
+    adjacency = { 'fp-mandatory-spaghetti.died-adjacency' },
+    orphan = { 'fp-mandatory-spaghetti.died-orphan' },
+}
 local adjacent_blacklist = {
     ['curved-rail-a'] = true,
     ['elevated-curved-rail-a'] = true,
@@ -65,10 +70,7 @@ local function die(source, event, reason)
     if event.player_index then
         local player = game.get_player(event.player_index)
         if player then
-            local msg = reason == 'pattern'
-                and { 'fp-mandatory-spaghetti.died-pattern' }
-                or { 'fp-mandatory-spaghetti.died-adjacency' }
-            player.print(msg, { color = MSG_COLOR })
+            player.print(REASON_MSG[reason], { color = MSG_COLOR })
         end
     end
     DebugLog.log('[spaghetti] %s died (%s) at [%d,%d] surface=%d builder=%s',
@@ -198,6 +200,40 @@ local function pattern(source, event)
         end
     end
 end
+local function has_adjacent_building(entity, excluded)
+    local bb = entity.bounding_box
+    local lt, rb = bb.left_top, bb.right_bottom
+    local entities = entity.surface.find_entities_filtered({
+        area = { { lt.x - 1, lt.y - 1 }, { rb.x + 1, rb.y + 1 } },
+        force = entity.force,
+    })
+    for _, e in pairs(entities) do
+        if e ~= entity and e ~= excluded and e.valid and e.prototype.is_building then
+            return true
+        end
+    end
+    return false
+end
+local function on_building_removed(event)
+    local removed = event.entity
+    if not removed or not removed.valid then return end
+    local force_name = removed.force.name
+    if force_name == 'enemy' or force_name == 'neutral' then return end
+    if not removed.prototype.is_building then return end
+    local bb = removed.bounding_box
+    local lt, rb = bb.left_top, bb.right_bottom
+    local neighbors = removed.surface.find_entities_filtered({
+        area = { { lt.x - 1, lt.y - 1 }, { rb.x + 1, rb.y + 1 } },
+        force = removed.force,
+    })
+    for _, n in pairs(neighbors) do
+        if n ~= removed and n.valid and n.prototype.is_building
+            and not adjacent_blacklist[n.type]
+            and not has_adjacent_building(n, removed) then
+            die(n, event, 'orphan')
+        end
+    end
+end
 local function build_handler(event)
     local source = event.entity
     if not source or not source.valid then return end
@@ -210,4 +246,9 @@ local function build_handler(event)
 end
 Event.add(de.on_built_entity, build_handler)
 Event.add(de.on_robot_built_entity, build_handler)
+if config.adjacency_enabled and config.orphan_enforcement then
+    Event.add(de.on_player_mined_entity, on_building_removed)
+    Event.add(de.on_robot_mined_entity, on_building_removed)
+    Event.add(de.on_entity_died, on_building_removed)
+end
 return M
