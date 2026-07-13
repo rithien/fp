@@ -62,12 +62,13 @@ local pattern_blacklist = {
     ['spider-vehicle'] = true,
     ['wall'] = true,
 }
-local function die(source, event, reason)
+local in_die = false
+local function die(source, event, reason, quiet)
     local surface = source.surface
     local pos = source.position
     local force = source.force
     local entity_name = source.name
-    if event.player_index then
+    if not quiet and event.player_index then
         local player = game.get_player(event.player_index)
         if player then
             player.print(REASON_MSG[reason], { color = MSG_COLOR })
@@ -76,6 +77,7 @@ local function die(source, event, reason)
     DebugLog.log('[spaghetti] %s died (%s) at [%d,%d] surface=%d builder=%s',
         entity_name, reason, math.floor(pos.x), math.floor(pos.y), surface.index,
         event.player_index and game.get_player(event.player_index).name or 'robot')
+    in_die = true
     if config.casual_mode then
         local products = source.prototype.mineable_properties.products or {}
         local temp = game.create_inventory(#products)
@@ -96,6 +98,7 @@ local function die(source, event, reason)
     else
         source.die(force)
     end
+    in_die = false
     local ghost = surface.find_entity('entity-ghost', pos)
     if ghost then ghost.destroy() end
 end
@@ -200,26 +203,38 @@ local function pattern(source, event)
         end
     end
 end
-local function has_adjacent_building(entity, excluded)
-    local bb = entity.bounding_box
-    local lt, rb = bb.left_top, bb.right_bottom
-    local entities = entity.surface.find_entities_filtered({
-        area = { { lt.x - 1, lt.y - 1 }, { rb.x + 1, rb.y + 1 } },
-        force = entity.force,
-    })
-    for _, e in pairs(entities) do
-        if e ~= entity and e ~= excluded and e.valid and e.prototype.is_building then
-            return true
+local function collect_island(start, excluded, limit)
+    local visited = { [start.unit_number] = true }
+    local island = { start }
+    local qi = 1
+    while qi <= #island do
+        local current = island[qi]
+        qi = qi + 1
+        local bb = current.bounding_box
+        local lt, rb = bb.left_top, bb.right_bottom
+        local around = current.surface.find_entities_filtered({
+            area = { { lt.x - 1, lt.y - 1 }, { rb.x + 1, rb.y + 1 } },
+            force = current.force,
+        })
+        for _, e in pairs(around) do
+            if e ~= excluded and e.valid and e.unit_number and not visited[e.unit_number]
+                and e.prototype.is_building then
+                visited[e.unit_number] = true
+                island[#island + 1] = e
+                if #island > limit then return nil end
+            end
         end
     end
-    return false
+    return island
 end
 local function on_building_removed(event)
+    if in_die then return end
     local removed = event.entity
     if not removed or not removed.valid then return end
     local force_name = removed.force.name
     if force_name == 'enemy' or force_name == 'neutral' then return end
     if not removed.prototype.is_building then return end
+    local limit = math.max(1, config.orphan_island_limit or 1)
     local bb = removed.bounding_box
     local lt, rb = bb.left_top, bb.right_bottom
     local neighbors = removed.surface.find_entities_filtered({
@@ -228,9 +243,16 @@ local function on_building_removed(event)
     })
     for _, n in pairs(neighbors) do
         if n ~= removed and n.valid and n.prototype.is_building
-            and not adjacent_blacklist[n.type]
-            and not has_adjacent_building(n, removed) then
-            die(n, event, 'orphan')
+            and not adjacent_blacklist[n.type] then
+            local island = collect_island(n, removed, limit)
+            if island then
+                DebugLog.log('[spaghetti] orphan island size=%d seed=%s', #island, n.name)
+                for i, member in ipairs(island) do
+                    if member.valid then
+                        die(member, event, 'orphan', i > 1) 
+                    end
+                end
+            end
         end
     end
 end
