@@ -4,7 +4,7 @@ local config = require 'lib.mandatory_spaghetti.config'
 local M = {}
 if not config.enabled then return M end
 local de = defines.events
-local FLY_COLOR = { r = 1, g = 0.35, b = 0.35 }
+local MSG_COLOR = { r = 1, g = 0.35, b = 0.35 }
 local adjacent_blacklist = {
     ['curved-rail-a'] = true,
     ['elevated-curved-rail-a'] = true,
@@ -68,7 +68,7 @@ local function die(source, event, reason)
             local msg = reason == 'pattern'
                 and { 'fp-mandatory-spaghetti.died-pattern' }
                 or { 'fp-mandatory-spaghetti.died-adjacency' }
-            player.create_local_flying_text({ text = msg, position = pos, color = FLY_COLOR })
+            player.print(msg, { color = MSG_COLOR })
         end
     end
     DebugLog.log('[spaghetti] %s died (%s) at [%d,%d] surface=%d builder=%s',
