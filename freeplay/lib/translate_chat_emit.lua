@@ -28,7 +28,7 @@ local function on_console_chat(event)
             end
         end
     end
-    if count < 2 then return end  
+    if count == 0 then return end  
     Public.emit(speaker.name, message, locales)
 end
 Public.on_console_chat = on_console_chat
