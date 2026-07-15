@@ -13,8 +13,9 @@ local function data()
             disable_crashsite = false,
             skip_intro = false,
             custom_intro_message = nil,
+            chart_distance = nil,
             touched = false,
-            init = false,
+            init = #game.players > 0,
         }
     end
     return storage.freeplay
@@ -43,6 +44,8 @@ remote.add_interface('freeplay', {
     set_skip_intro = setter('skip_intro'),
     get_custom_intro_message = function() return data().custom_intro_message end,
     set_custom_intro_message = setter('custom_intro_message'),
+    get_init_ran = function() return data().init end,
+    set_chart_distance = function(value) data().chart_distance = tonumber(value) end,
 })
 local function create_crash_site_once(player)
     local d = data()
@@ -53,7 +56,7 @@ local function create_crash_site_once(player)
     crash_site.create_crash_site(surface, { -5, -6 },
         util.copy(d.ship_items), util.copy(d.debris_items),
         util.copy(d.ship_parts or crash_site.default_ship_parts()))
-    local r = 200
+    local r = d.chart_distance or 200
     local origin = player.force.get_spawn_position(surface)
     player.force.chart(surface, { { origin.x - r, origin.y - r }, { origin.x + r, origin.y + r } })
 end
