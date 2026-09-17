@@ -1,5 +1,5 @@
 return {
-    blueprints       = false,   
+    blueprints       = true,   
     no_handcrafting  = false,  
     far_reach        = false,  
     show_signals     = true,  
@@ -15,7 +15,7 @@ return {
     todo_list        = true,   
     circuit_highlight = true,  
     inserter_throughput = true, 
-    belt_visualizer  = true,   
+    belt_visualizer  = false,   
     bp_params        = false,   
     spawn_logo       = true,   
     debug_log        = false,  
