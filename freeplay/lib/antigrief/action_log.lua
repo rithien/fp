@@ -15,6 +15,7 @@ local KINDS = {
     build = { verb = 'built', category = 'build' },
     mine = { verb = 'mined', category = 'mining' },
     decon = { verb = 'marked for decon', category = 'deconstruct' },
+    ghost = { verb = 'removed ghost', category = 'deconstruct' },
     upgrade = { verb = 'marked for upgrade', category = 'upgrade' },
 }
 local function emit_cluster(player, kind, cluster)
@@ -74,12 +75,13 @@ function ActionLog.flush()
         end
     end
 end
-function ActionLog.queue(player, kind, entity)
+function ActionLog.queue(player, kind, entity, entity_name)
     local spec = KINDS[kind]
     if not spec then return end
     if not player or not player.valid then return end
     if not entity or not entity.valid then return end
     if is_logging_muted_for(player) then return end
+    local name = entity_name or entity.name
     if not this or not this.player_action_pending then
         bind_storage() 
     end
@@ -122,10 +124,10 @@ function ActionLog.queue(player, kind, entity)
         }
         clusters[#clusters + 1] = found
     end
-    found.entities[entity.name] = (found.entities[entity.name] or 0) + 1
+    found.entities[name] = (found.entities[name] or 0) + 1
     found.total_count = found.total_count + 1
     found.last_tick = current_tick
-    DebugLog.log('[antigrief.action_log] queue kind=%s player=%s entity=%s cluster_total=%d', kind, player.name, entity.name, found.total_count)
+    DebugLog.log('[antigrief.action_log] queue kind=%s player=%s entity=%s cluster_total=%d', kind, player.name, name, found.total_count)
     if found.total_count >= AG.robot_mining_cluster_max_count then
         ActionLog.flush() 
     end

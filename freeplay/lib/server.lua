@@ -1,3 +1,4 @@
+local DebugLog = require 'lib.debug_log'
 local concat = table.concat
 local tostring = tostring
 local raw_print = print
@@ -120,6 +121,8 @@ local function send_try_get_data_and_print(data_set, key, to_print, callback_tok
     output_data(concat { data_get_and_print_tag, callback_token, ' {', 'data_set:"', data_set, '",key:"', key, '",to_print:"', to_print, '"}' })
 end
 local function log_antigrief_data(category, action, severity, player_name)
+    DebugLog.log('[antigrief.log] emit category=%s severity=%s player=%s action=%s',
+        tostring(category), tostring(severity or 'info'), tostring(player_name or '-'), tostring(action))
     category = single_escape(category)
     action = single_escape(action)
     severity = single_escape(severity or 'info')

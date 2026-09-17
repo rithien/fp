@@ -71,7 +71,6 @@ local function on_pre_ghost_deconstructed(event)
     if not event.player_index then return end
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end
-    if this.do_not_check_trusted then return end
     local ghost = event.ghost
     if not ghost or not ghost.valid then return end
     if should_hard_block(player, ghost) then
@@ -88,6 +87,9 @@ local function on_pre_ghost_deconstructed(event)
             format(AUDIT.deconstruct_ghost, ghost.ghost_name or ghost.name, get_owner_name(ghost)))
         return
     end
+    if is_logging_muted_for(player) then return end
+    if ghost.force.name ~= player.force.name then return end
+    ActionLog.queue(player, 'ghost', ghost, ghost.ghost_name or ghost.name)
 end
 local main_inventory_indices = Compat.main_inventory_indices
 local function plain_id(v)
