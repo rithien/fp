@@ -26,7 +26,7 @@ AdminPanel.register_toggle({
         Config.set(TOGGLE_ID, new_state)
         apply(new_state)
         game.print({ 'fp-admin.broadcast-toggle', { 'fp-admin.always-day-caption' },
-                     { new_state and 'fp-admin.on' or 'fp-admin.off' }, player.name },
+                     { new_state and 'fp-admin.on' or 'fp-admin.off' }, AdminPanel.actor_name(player) },
                    { color = { r = 1, g = 1, b = 0 } })
     end,
 })

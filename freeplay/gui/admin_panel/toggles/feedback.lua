@@ -20,7 +20,7 @@ AdminPanel.register_toggle({
         Feedback.set_enabled(new_state)
         refresh_buttons()
         game.print({ 'fp-admin.broadcast-toggle', { 'fp-admin.feedback-caption' },
-                     { new_state and 'fp-admin.on' or 'fp-admin.off' }, player.name },
+                     { new_state and 'fp-admin.on' or 'fp-admin.off' }, AdminPanel.actor_name(player) },
                    { color = { r = 1, g = 1, b = 0 } })
     end,
 })

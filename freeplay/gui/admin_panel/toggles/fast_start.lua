@@ -135,9 +135,9 @@ AdminPanel.register_toggle({
         local state = { new_state and 'fp-admin.on' or 'fp-admin.off' }
         local msg
         if new_state and distributed > 0 then
-            msg = { 'fp-admin.broadcast-toggle-count', { 'fp-admin.fast-start-caption' }, state, player.name, distributed }
+            msg = { 'fp-admin.broadcast-toggle-count', { 'fp-admin.fast-start-caption' }, state, AdminPanel.actor_name(player), distributed }
         else
-            msg = { 'fp-admin.broadcast-toggle', { 'fp-admin.fast-start-caption' }, state, player.name }
+            msg = { 'fp-admin.broadcast-toggle', { 'fp-admin.fast-start-caption' }, state, AdminPanel.actor_name(player) }
         end
         game.print(msg, { color = { r = 1, g = 1, b = 0 } })
     end,

@@ -64,6 +64,7 @@ _G.Server = require 'lib.server'
 _G.Token = require 'lib.token'     
 _G.Sessions = require 'lib.sessions' 
 _G.ServerSelect = require 'lib.server_select' 
+_G.RconToggles = require 'gui.admin_panel.rcon_toggles' 
 Event.on_init(
     function()
         log('[factorio-polska] scenario loaded — all modules initialized')

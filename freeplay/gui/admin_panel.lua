@@ -441,6 +441,41 @@ function Public.refresh_open_panel(player)
         build_panel(player)
     end
 end
+function Public.refresh_all_open_panels()
+    for _, player in pairs(game.connected_players) do
+        if player.valid and player.admin then
+            Public.refresh_open_panel(player)
+        end
+    end
+end
+function Public.actor_name(player)
+    if player and player.valid then
+        return player.name
+    end
+    return { 'fp-admin.actor-rcon' }
+end
+function Public.get_toggles()
+    return toggles
+end
+local function find_toggle(id)
+    for _, def in ipairs(toggles) do
+        if def.id == id then return def end
+    end
+    return nil
+end
+function Public.set_toggle(id, new_state, player)
+    local def = find_toggle(id)
+    if not def then
+        return false, 'unknown toggle: ' .. tostring(id)
+    end
+    local ok, err = pcall(def.on_change, new_state and true or false, player)
+    if not ok then
+        log(string.format('[admin_panel] set_toggle(%s, %s) failed: %s', tostring(id), tostring(new_state), tostring(err)))
+        return false, tostring(err)
+    end
+    Public.refresh_all_open_panels()
+    return true
+end
 Gui.on_click(TOGGLE_BUTTON_ACTION, function(_, player)
     if not player or not player.valid then
         return

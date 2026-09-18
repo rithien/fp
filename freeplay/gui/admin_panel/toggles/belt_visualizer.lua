@@ -22,7 +22,7 @@ AdminPanel.register_toggle({
         if not new_state then BeltVisualizer.clear_all() end
         refresh_buttons()
         game.print({ 'fp-admin.broadcast-toggle', { 'fp-admin.belt-visualizer-caption' },
-                { new_state and 'fp-admin.on' or 'fp-admin.off' }, player.name },
+                { new_state and 'fp-admin.on' or 'fp-admin.off' }, AdminPanel.actor_name(player) },
             { color = { r = 1, g = 1, b = 0 } })
     end,
 })

@@ -139,7 +139,11 @@ AdminPanel.register_toggle({
     on_change = function(new_state, player)
         Config.set(TOGGLE_ID, new_state)
         if new_state and not prototypes.item[ARMOR_NAME] then
-            player.print({ 'fp-admin.fast-start-mech-no-sa' }, { color = { r = 1, g = 0.7, b = 0 } })
+            if player and player.valid then
+                player.print({ 'fp-admin.fast-start-mech-no-sa' }, { color = { r = 1, g = 0.7, b = 0 } })
+            else
+                rcon.print({ 'fp-admin.fast-start-mech-no-sa' })
+            end
         end
         if new_state then
             Config.set('fast_start', false)
@@ -152,9 +156,9 @@ AdminPanel.register_toggle({
         local state = { new_state and 'fp-admin.on' or 'fp-admin.off' }
         local msg
         if new_state and distributed > 0 then
-            msg = { 'fp-admin.broadcast-toggle-count', { 'fp-admin.fast-start-mech-caption' }, state, player.name, distributed }
+            msg = { 'fp-admin.broadcast-toggle-count', { 'fp-admin.fast-start-mech-caption' }, state, AdminPanel.actor_name(player), distributed }
         else
-            msg = { 'fp-admin.broadcast-toggle', { 'fp-admin.fast-start-mech-caption' }, state, player.name }
+            msg = { 'fp-admin.broadcast-toggle', { 'fp-admin.fast-start-mech-caption' }, state, AdminPanel.actor_name(player) }
         end
         game.print(msg, { color = { r = 1, g = 1, b = 0 } })
     end,
