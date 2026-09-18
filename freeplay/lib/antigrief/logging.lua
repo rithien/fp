@@ -280,6 +280,7 @@ local function on_player_deconstructed_area(event)
         str = str .. ' '
         str = str .. 'surface:' .. surface.index
         Server.log_antigrief_data('deconstruct', str, 'block', player.name)
+        Session.reset_local_trust_clock(player) 
         if this.enable_jail_when_decon then 
             if not this.players_warn_when_decon[player.index] then
                 this.players_warn_when_decon[player.index] = 1

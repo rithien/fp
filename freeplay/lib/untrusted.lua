@@ -104,4 +104,8 @@ Event.add(de.on_player_demoted, function(event)
     route(game.get_player(event.player_index), nil)
 end)
 Jail.set_unjail_group_resolver(function(player) route(player, nil) end)
+Session.add_local_trust_blocker(function(player) return Jail.is_jailed(player.name) end)
+Jail.on_jail_state_changed(function(name)
+    Session.reset_local_trust_clock(game.get_player(name), true)
+end)
 return Public

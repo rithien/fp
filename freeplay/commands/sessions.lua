@@ -23,6 +23,22 @@ Commands.new('sessionsthreshold', { 'fp-commands.sessionsthreshold-help' })
         game.print(msg, { color = { r = 1, g = 1, b = 0 } })
         log(msg)
     end)
+Commands.new('sessionslocalthreshold', { 'fp-commands.sessionslocalthreshold-help' })
+    :require_admin()
+    :add_parameter('minutes', true, 'number')
+    :callback(function(cmd, minutes)
+        local previous_ticks = Session.get_local_trusted_threshold()
+        local new_ticks
+        if not minutes or minutes <= 0 then
+            new_ticks = Session.set_local_trusted_threshold(nil) 
+        else
+            new_ticks = Session.set_local_trusted_threshold(math.floor(minutes * 3600))
+        end
+        local msg = { 'fp-commands.sessionslocalthreshold-result',
+            format_threshold(previous_ticks), format_threshold(new_ticks) }
+        game.print(msg, { color = { r = 1, g = 1, b = 0 } })
+        log(msg)
+    end)
 Commands.new('sessionsstatus', { 'fp-commands.sessionsstatus-help' })
     :require_admin()
     :add_parameter('player', true, 'player')
@@ -41,11 +57,14 @@ Commands.new('sessionsstatus', { 'fp-commands.sessionsstatus-help' })
             local sessions_ticks = (storage.sessions and storage.sessions[name]) or 0
             local online_track = (storage.online_track and storage.online_track[name]) or 0
             local trusted = (storage.trusted and storage.trusted[name]) or false
+            local trusted_local = (storage.trusted_local and storage.trusted_local[name]) or false
+            local local_baseline = (storage.trusted_local_baseline and storage.trusted_local_baseline[name]) or 0
             local manually_untrusted = (storage.manually_untrusted and storage.manually_untrusted[name]) or false
             reply({ 'fp-commands.sessionsstatus-player',
                 name, online_time, string.format('%.1f', online_time / 3600),
                 sessions_ticks, string.format('%.1f', sessions_ticks / 3600),
-                online_track, tostring(trusted), tostring(manually_untrusted)
+                online_track, tostring(trusted), tostring(manually_untrusted), tostring(trusted_local),
+                local_baseline
             })
             return
         end
@@ -57,7 +76,10 @@ Commands.new('sessionsstatus', { 'fp-commands.sessionsstatus-help' })
         for _ in pairs(sessions_table) do sessions_count = sessions_count + 1 end
         for _, v in pairs(trusted_table) do if v then trusted_count = trusted_count + 1 end end
         for _ in pairs(online_track_table) do online_track_count = online_track_count + 1 end
+        local trusted_local_count = 0
+        for _ in pairs(storage.trusted_local or {}) do trusted_local_count = trusted_local_count + 1 end
         reply({ 'fp-commands.sessionsstatus-global',
-            format_threshold(threshold), sessions_count, trusted_count, online_track_count
+            format_threshold(threshold), sessions_count, trusted_count, online_track_count,
+            format_threshold(Session.get_local_trusted_threshold()), trusted_local_count
         })
     end)

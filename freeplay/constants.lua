@@ -24,6 +24,8 @@ Constants.antigrief = {
 }
 Constants.sessions = {
     trusted_value = 3 * 60 * 3600,                 
+    local_trusted_value = 1 * 60 * 3600,           
+    local_check_nth_tick = 3600,                   
     required_only_time_to_save_time = 10 * 3600,   
     nth_tick = 5 * 3600,                           
 }

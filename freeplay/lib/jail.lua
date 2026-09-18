@@ -10,6 +10,15 @@ for _, name in ipairs(JAIL.allowed_actions or {}) do
 end
 local unjail_group_resolver = nil
 function Public.set_unjail_group_resolver(fn) unjail_group_resolver = fn end
+local jail_state_listeners = {}
+function Public.on_jail_state_changed(fn)
+    jail_state_listeners[#jail_state_listeners + 1] = fn
+end
+local function notify_jail_state(name, jailed)
+    for i = 1, #jail_state_listeners do
+        jail_state_listeners[i](name, jailed)
+    end
+end
 local function ensure_init()
     storage.jailed = storage.jailed or {}
 end
@@ -49,6 +58,7 @@ function Public.jail_player(name, reason, source)
         if group then group.add_player(player) end
     end
     if transition then
+        notify_jail_state(name, true)
         Server.notify_jail_change(name, true, reason)
         game.print({ 'fp-antigrief-panel.bc-jailed', name, source or '' }, { color = { r = 1, g = 1, b = 0 } })
         if player and player.valid then
@@ -72,6 +82,7 @@ function Public.unjail_player(name)
         end
     end
     if transition then
+        notify_jail_state(name, false)
         Server.notify_jail_change(name, false)
         game.print({ 'fp-antigrief-panel.bc-unjailed', name }, { color = { r = 1, g = 1, b = 0 } })
     end

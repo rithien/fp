@@ -131,20 +131,25 @@ AdminPanel.register_toggle({
     tooltip = { 'fp-admin.fast-start-mech-tooltip' },
     get_state = function() return Config.is_enabled(TOGGLE_ID) end,
     apply = function(state)
-        if state then
-            Config.set('fast_start', false)
-            give_to_all_online()
+        if not state then return end
+        if not prototypes.item[ARMOR_NAME] then
+            Config.set(TOGGLE_ID, false)
+            return
         end
+        Config.set('fast_start', false)
+        give_to_all_online()
     end,
     on_change = function(new_state, player)
-        Config.set(TOGGLE_ID, new_state)
         if new_state and not prototypes.item[ARMOR_NAME] then
             if player and player.valid then
                 player.print({ 'fp-admin.fast-start-mech-no-sa' }, { color = { r = 1, g = 0.7, b = 0 } })
+                AdminPanel.refresh_open_panel(player) 
             else
                 rcon.print({ 'fp-admin.fast-start-mech-no-sa' })
             end
+            return
         end
+        Config.set(TOGGLE_ID, new_state)
         if new_state then
             Config.set('fast_start', false)
             AdminPanel.refresh_open_panel(player)

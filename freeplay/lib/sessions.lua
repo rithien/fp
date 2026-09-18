@@ -2,6 +2,7 @@ local Event = require 'lib.event'
 local Token = require 'lib.token'
 local Task = require 'lib.task'
 local Server = require 'lib.server'
+local DebugLog = require 'lib.debug_log'
 local Constants = require 'constants'
 local set_timeout_in_ticks = Task.set_timeout_in_ticks
 local set_data = Server.set_data
@@ -26,6 +27,8 @@ local function ensure_init()
     storage.sessions = storage.sessions or {}
     storage.online_track = storage.online_track or {}
     storage.trusted = storage.trusted or {}
+    storage.trusted_local = storage.trusted_local or {}
+    storage.trusted_local_baseline = storage.trusted_local_baseline or {}
     storage.manually_untrusted = storage.manually_untrusted or {}
     storage.sessions_upload_inflight = storage.sessions_upload_inflight or {}
     storage.sessions_sticky_resolved = storage.sessions_sticky_resolved or {}
@@ -42,6 +45,54 @@ function Public.set_trusted_threshold(ticks)
     end
     storage.sessions_threshold_override = ticks
     return ticks
+end
+function Public.get_local_trusted_threshold()
+    return storage.sessions_local_threshold_override or settings.local_trusted_value
+end
+function Public.set_local_trusted_threshold(ticks)
+    if not ticks or ticks <= 0 then
+        storage.sessions_local_threshold_override = nil
+        return settings.local_trusted_value
+    end
+    storage.sessions_local_threshold_override = ticks
+    return ticks
+end
+local local_trust_blockers = {}
+function Public.add_local_trust_blocker(fn)
+    local_trust_blockers[#local_trust_blockers + 1] = fn
+end
+local function is_local_trust_blocked(player)
+    for i = 1, #local_trust_blockers do
+        local ok, blocked = pcall(local_trust_blockers[i], player)
+        if not ok or blocked then return true end
+    end
+    return false
+end
+local function try_grant_local_trust(player)
+    if not (player and player.valid and player.connected) then return end
+    local name = player.name
+    if storage.trusted[name] or storage.trusted_local[name] then return end
+    if storage.manually_untrusted[name] or not storage.sessions_sticky_resolved[name] then return end
+    local clean_time = player.online_time - (storage.trusted_local_baseline[name] or 0)
+    if clean_time < Public.get_local_trusted_threshold() then return end
+    if is_local_trust_blocked(player) then return end
+    storage.trusted_local[name] = true
+    DebugLog.log('[sessions] local trust granted: %s (online_time=%d, clean_time=%d, threshold=%d)',
+        name, player.online_time, clean_time, Public.get_local_trusted_threshold())
+    player.print({ 'fp-status.local-trust-granted' })
+    notify_trust_refreshed(name)
+end
+function Public.reset_local_trust_clock(player, revoke)
+    if not (player and player.valid) then return end
+    ensure_init()
+    local name = player.name
+    storage.trusted_local_baseline[name] = player.online_time
+    DebugLog.log('[sessions] local trust clock reset: %s (baseline=%d, revoke=%s)',
+        name, player.online_time, tostring(revoke and true or false))
+    if revoke and storage.trusted_local[name] then
+        storage.trusted_local[name] = nil
+        notify_trust_refreshed(name)
+    end
 end
 local function get_min_save_time()
     local threshold = Public.get_trusted_threshold()
@@ -93,6 +144,9 @@ local try_download_manually_untrusted_token = Token.register(function(data)
         if storage.trusted[player_name] then
             storage.trusted[player_name] = nil 
         end
+        storage.trusted_local[player_name] = nil
+    else
+        try_grant_local_trust(game.get_player(player_name))
     end
     Public.try_dl_data(player_name) 
 end)
@@ -176,7 +230,16 @@ function Public.get_trusted_table()
 end
 function Public.get_trusted_player(player)
     if not storage.trusted then return false end
-    return player and player.valid and storage.trusted[player.name] or false
+    if not (player and player.valid) then return false end
+    local name = player.name
+    return storage.trusted[name] or (storage.trusted_local and storage.trusted_local[name]) or false
+end
+function Public.get_trust_scope(player)
+    if not storage.trusted or not (player and player.valid) then return nil end
+    local name = player.name
+    if storage.trusted[name] then return 'global' end
+    if storage.trusted_local and storage.trusted_local[name] then return 'local' end
+    return nil
 end
 function Public.is_manually_untrusted(player)
     if not storage.manually_untrusted then return false end
@@ -193,6 +256,7 @@ end
 function Public.set_untrusted_player(player)
     if storage.trusted and player and player.valid then
         storage.trusted[player.name] = nil
+        if storage.trusted_local then storage.trusted_local[player.name] = nil end
         storage.manually_untrusted[player.name] = true
         set_data(manually_untrusted_data_set, player.name, 1)
         Server.notify_trust_change(player.name, false)
@@ -222,12 +286,15 @@ end
 function Public.get_remaining_trust_ticks(player)
     if not (player and player.valid) then return 0 end
     ensure_init()
-    if storage.trusted[player.name] then return 0 end
+    if storage.trusted[player.name] or storage.trusted_local[player.name] then return 0 end
     local base = storage.sessions[player.name] or 0
     local track = storage.online_track[player.name] or 0
     local delta = player.online_time - track
     if delta < 0 then delta = 0 end 
     local remaining = Public.get_trusted_threshold() - (base + delta)
+    local clean_time = player.online_time - (storage.trusted_local_baseline[player.name] or 0)
+    local remaining_local = Public.get_local_trusted_threshold() - clean_time
+    if remaining_local < remaining then remaining = remaining_local end
     if remaining < 0 then remaining = 0 end
     return remaining
 end
@@ -260,6 +327,13 @@ Event.on_nth_tick(settings.nth_tick, function()
     ensure_init()
     upload_data()
 end)
+Event.on_nth_tick(settings.local_check_nth_tick, function()
+    ensure_init()
+    local players = game.connected_players
+    for i = 1, #players do
+        try_grant_local_trust(players[i])
+    end
+end)
 Server.on_data_set_changed(session_data_set, function(data)
     ensure_init()
     local player = game.get_player(data.key)
@@ -287,8 +361,9 @@ Server.on_data_set_changed(manually_untrusted_data_set, function(data)
     local player_name = data.key
     if data.value then
         storage.manually_untrusted[player_name] = true
-        if storage.trusted[player_name] then
+        if storage.trusted[player_name] or storage.trusted_local[player_name] then
             storage.trusted[player_name] = nil
+            storage.trusted_local[player_name] = nil
             notify_trust_refreshed(player_name) 
         end
     else

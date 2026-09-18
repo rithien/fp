@@ -88,6 +88,11 @@ local function val_loc(val)
     if val == nil then return { 'fp-antigrief-panel.val-unknown' } end
     return { val and 'fp-antigrief-panel.val-yes' or 'fp-antigrief-panel.val-no' }
 end
+local function trust_loc(p)
+    local scope = Session.get_trust_scope(p)
+    if scope == 'local' then return { 'fp-antigrief-panel.val-yes-local' } end
+    return val_loc(scope ~= nil)
+end
 local function build_player_info(player_name)
     if not player_name or player_name == '' then
         return { 'fp-antigrief-panel.info-none' }
@@ -106,7 +111,7 @@ local function build_player_info(player_name)
         { 'fp-antigrief-panel.info-selected', p.name }, '\n',
         { 'fp-antigrief-panel.info-stats',
             val_loc(p.connected),
-            val_loc(Session.get_trusted_player(p) and true or false),
+            trust_loc(p),
             val_loc(p.admin) }, '\n',
         { 'fp-antigrief-panel.info-banned', banned_loc }, '\n',
         { 'fp-antigrief-panel.info-jailed', jailed_loc } }
@@ -267,6 +272,28 @@ local TOGGLES = {
         on_change = set_admin_temp_trust,
     },
 }
+local function toggle_switch_name(id)
+    return 'antigrief_toggle_switch_' .. id
+end
+local function toggle_switch_state(def)
+    local ok, state = pcall(def.get_state)
+    return (ok and state) and 'right' or 'left'
+end
+local function sync_toggle_switches()
+    for _, player in pairs(game.connected_players) do
+        if player.valid and player.admin then
+            local frame = player.gui.screen[PANEL_FRAME_NAME]
+            if frame and frame.valid then
+                for _, def in ipairs(TOGGLES) do
+                    local switch = find_by_name(frame, toggle_switch_name(def.id))
+                    if switch and switch.valid then
+                        switch.switch_state = toggle_switch_state(def)
+                    end
+                end
+            end
+        end
+    end
+end
 local function build_panel(player)
     Gui.destroy_if_exists(player.gui.screen, PANEL_FRAME_NAME)
     local frame = player.gui.screen.add({
@@ -299,28 +326,24 @@ local function build_panel(player)
         tooltip = { 'fp-antigrief-panel.close-tooltip' },
         tags = { action = CLOSE_ACTION }
     })
-    local function add_setting_row(parent, caption, tooltip, current_state, action, left_caption, right_caption)
-        local row = parent.add({ type = 'flow', direction = 'horizontal' })
+    for _, def in ipairs(TOGGLES) do
+        local labels = def.state_labels
+        local row = frame.add({ type = 'flow', direction = 'horizontal' })
         row.style.vertical_align = 'center'
         row.style.top_padding = 4
         row.style.bottom_padding = 4
-        local label = row.add({ type = 'label', caption = caption })
+        local label = row.add({ type = 'label', caption = def.caption })
         label.style.minimal_width = 220
         label.style.right_padding = 8
         Gui.add(row, {
             type = 'switch',
-            switch_state = current_state and 'right' or 'left',
-            left_label_caption = left_caption or { 'fp-admin.off' },
-            right_label_caption = right_caption or { 'fp-admin.on' },
-            tooltip = tooltip,
-            tags = { action = action }
+            name = toggle_switch_name(def.id),
+            switch_state = toggle_switch_state(def),
+            left_label_caption = labels and labels.off or { 'fp-admin.off' },
+            right_label_caption = labels and labels.on or { 'fp-admin.on' },
+            tooltip = def.tooltip,
+            tags = { action = def.action }
         })
-    end
-    for _, def in ipairs(TOGGLES) do
-        local ok, state = pcall(def.get_state)
-        local labels = def.state_labels
-        add_setting_row(frame, def.caption, def.tooltip, ok and state or false, def.action,
-            labels and labels.off, labels and labels.on)
     end
     build_players_content(frame)
     player.opened = frame
@@ -365,6 +388,7 @@ for _, def in ipairs(TOGGLES) do
             return
         end
         def.on_change(element.switch_state == 'right', player)
+        sync_toggle_switches()
     end)
 end
 Gui.on_switch_state_changed(PLAYERS_FILTER_ACTION, function(_, admin)
@@ -477,16 +501,7 @@ local Public = {}
 function Public.get_toggles()
     return TOGGLES
 end
-function Public.refresh_all_open_panels()
-    for _, player in pairs(game.connected_players) do
-        if player.valid and player.admin then
-            local existing = player.gui.screen[PANEL_FRAME_NAME]
-            if existing and existing.valid then
-                build_panel(player)
-            end
-        end
-    end
-end
+Public.refresh_all_open_panels = sync_toggle_switches
 function Public.set_toggle(id, new_state, player)
     for _, def in ipairs(TOGGLES) do
         if def.id == id then

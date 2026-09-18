@@ -181,6 +181,7 @@ local function do_action(player, action_prefix, msg, ban_msg, kill)
     kill = kill or false
     damage_player(player, kill)
     action_warning(action_prefix, msg)
+    Session.reset_local_trust_clock(player) 
     local idx = player.index
     local entry = this.players_warned[idx]
     local count = (type(entry) == 'table' and entry.count) or (type(entry) == 'number' and entry) or 0
@@ -264,6 +265,7 @@ local function hard_block_action(player, category, action_msg)
     local strikes = (entry and entry.count or 0) + 1
     local kicks = (entry and entry.kicks or 0)
     this.players_warned_hard_block[player.index] = { count = strikes, kicks = kicks, last_strike_tick = now }
+    Session.reset_local_trust_clock(player)
     Task.set_timeout_in_ticks(AG.strike_ttl_ticks, clear_hard_block_warning_token,
         { player_index = player.index, scheduled_tick = now })
     if kicks > 0 then
