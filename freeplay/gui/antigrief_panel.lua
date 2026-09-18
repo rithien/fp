@@ -221,6 +221,52 @@ local function build_players_content(parent)
     info_label.style.single_line = false
     info_label.style.top_padding = 4
 end
+local function set_enforcement(new_state, player)
+    Antigrief.set_enabled(new_state)
+    game.print({ 'fp-antigrief-panel.bc-enforcement',
+                 { new_state and 'fp-admin.on' or 'fp-admin.off' }, Gui.actor_name(player) },
+               { color = { r = 1, g = 1, b = 0 } })
+end
+local function set_auto_action_jail(jail, player)
+    Antigrief.set('punish_mode', jail and 'jail' or 'ban')
+    game.print({ 'fp-antigrief-panel.bc-auto-action',
+                 { jail and 'fp-antigrief-panel.auto-action-jail' or 'fp-antigrief-panel.auto-action-ban' },
+                 Gui.actor_name(player) },
+               { color = { r = 1, g = 1, b = 0 } })
+end
+local function set_admin_temp_trust(on, player)
+    Antigrief.set_admin_temp_trust(on)
+    game.print({ 'fp-antigrief-panel.bc-admin-temp-trust',
+                 { on and 'fp-admin.on' or 'fp-admin.off' }, Gui.actor_name(player) },
+               { color = { r = 1, g = 1, b = 0 } })
+end
+local TOGGLES = {
+    {
+        id = 'antigrief_enforcement',
+        action = ENABLED_SWITCH_ACTION,
+        caption = { 'fp-antigrief-panel.enforcement-label' },
+        tooltip = { 'fp-antigrief-panel.enforcement-tooltip' },
+        get_state = function() return Antigrief.get('enabled') and true or false end,
+        on_change = set_enforcement,
+    },
+    {
+        id = 'antigrief_auto_action',
+        action = PUNISH_MODE_SWITCH_ACTION,
+        caption = { 'fp-antigrief-panel.auto-action-label' },
+        tooltip = { 'fp-antigrief-panel.auto-action-tooltip' },
+        state_labels = { off = { 'fp-antigrief-panel.auto-action-ban' }, on = { 'fp-antigrief-panel.auto-action-jail' } },
+        get_state = function() return Antigrief.get('punish_mode') == 'jail' end,
+        on_change = set_auto_action_jail,
+    },
+    {
+        id = 'antigrief_admin_temp_trust',
+        action = ADMIN_TEMP_TRUST_SWITCH_ACTION,
+        caption = { 'fp-antigrief-panel.admin-temp-trust-label' },
+        tooltip = { 'fp-antigrief-panel.admin-temp-trust-tooltip' },
+        get_state = function() return Antigrief.get('admin_temp_trust') and true or false end,
+        on_change = set_admin_temp_trust,
+    },
+}
 local function build_panel(player)
     Gui.destroy_if_exists(player.gui.screen, PANEL_FRAME_NAME)
     local frame = player.gui.screen.add({
@@ -270,16 +316,12 @@ local function build_panel(player)
             tags = { action = action }
         })
     end
-    local enabled = Antigrief.get('enabled')
-    add_setting_row(frame, { 'fp-antigrief-panel.enforcement-label' }, { 'fp-antigrief-panel.enforcement-tooltip' },
-        enabled, ENABLED_SWITCH_ACTION)
-    local punish_jail = Antigrief.get('punish_mode') == 'jail'
-    add_setting_row(frame, { 'fp-antigrief-panel.auto-action-label' }, { 'fp-antigrief-panel.auto-action-tooltip' },
-        punish_jail, PUNISH_MODE_SWITCH_ACTION,
-        { 'fp-antigrief-panel.auto-action-ban' }, { 'fp-antigrief-panel.auto-action-jail' })
-    local admin_temp_trust = Antigrief.get('admin_temp_trust')
-    add_setting_row(frame, { 'fp-antigrief-panel.admin-temp-trust-label' }, { 'fp-antigrief-panel.admin-temp-trust-tooltip' },
-        admin_temp_trust, ADMIN_TEMP_TRUST_SWITCH_ACTION)
+    for _, def in ipairs(TOGGLES) do
+        local ok, state = pcall(def.get_state)
+        local labels = def.state_labels
+        add_setting_row(frame, def.caption, def.tooltip, ok and state or false, def.action,
+            labels and labels.off, labels and labels.on)
+    end
     build_players_content(frame)
     player.opened = frame
 end
@@ -313,48 +355,18 @@ Event.add(de.on_gui_closed, function(event)
         element.destroy()
     end
 end)
-Gui.on_switch_state_changed(ENABLED_SWITCH_ACTION, function(event, player)
-    if not player or not player.valid or not player.admin then
-        return
-    end
-    local element = event.element
-    if not element or not element.valid then
-        return
-    end
-    local new_enabled = element.switch_state == 'right'
-    Antigrief.set_enabled(new_enabled)
-    game.print({ 'fp-antigrief-panel.bc-enforcement',
-                 { new_enabled and 'fp-admin.on' or 'fp-admin.off' }, player.name },
-               { color = { r = 1, g = 1, b = 0 } })
-end)
-Gui.on_switch_state_changed(PUNISH_MODE_SWITCH_ACTION, function(event, player)
-    if not player or not player.valid or not player.admin then
-        return
-    end
-    local element = event.element
-    if not element or not element.valid then
-        return
-    end
-    local jail = element.switch_state == 'right'
-    Antigrief.set('punish_mode', jail and 'jail' or 'ban')
-    game.print({ 'fp-antigrief-panel.bc-auto-action',
-                 { jail and 'fp-antigrief-panel.auto-action-jail' or 'fp-antigrief-panel.auto-action-ban' }, player.name },
-               { color = { r = 1, g = 1, b = 0 } })
-end)
-Gui.on_switch_state_changed(ADMIN_TEMP_TRUST_SWITCH_ACTION, function(event, player)
-    if not player or not player.valid or not player.admin then
-        return
-    end
-    local element = event.element
-    if not element or not element.valid then
-        return
-    end
-    local on = element.switch_state == 'right'
-    Antigrief.set_admin_temp_trust(on)
-    game.print({ 'fp-antigrief-panel.bc-admin-temp-trust',
-                 { on and 'fp-admin.on' or 'fp-admin.off' }, player.name },
-               { color = { r = 1, g = 1, b = 0 } })
-end)
+for _, def in ipairs(TOGGLES) do
+    Gui.on_switch_state_changed(def.action, function(event, player)
+        if not player or not player.valid or not player.admin then
+            return
+        end
+        local element = event.element
+        if not element or not element.valid then
+            return
+        end
+        def.on_change(element.switch_state == 'right', player)
+    end)
+end
 Gui.on_switch_state_changed(PLAYERS_FILTER_ACTION, function(_, admin)
     if not admin or not admin.valid or not admin.admin then return end
     refresh_players_tab(admin)
@@ -461,3 +473,32 @@ Event.on_configuration_changed(function()
         end
     end
 end)
+local Public = {}
+function Public.get_toggles()
+    return TOGGLES
+end
+function Public.refresh_all_open_panels()
+    for _, player in pairs(game.connected_players) do
+        if player.valid and player.admin then
+            local existing = player.gui.screen[PANEL_FRAME_NAME]
+            if existing and existing.valid then
+                build_panel(player)
+            end
+        end
+    end
+end
+function Public.set_toggle(id, new_state, player)
+    for _, def in ipairs(TOGGLES) do
+        if def.id == id then
+            local ok, err = pcall(def.on_change, new_state and true or false, player)
+            if not ok then
+                log(string.format('[antigrief_panel] set_toggle(%s, %s) failed: %s', tostring(id), tostring(new_state), tostring(err)))
+                return false, tostring(err)
+            end
+            Public.refresh_all_open_panels()
+            return true
+        end
+    end
+    return false, 'unknown toggle: ' .. tostring(id)
+end
+return Public

@@ -90,4 +90,10 @@ function Gui.get_top_element(player, name)
     end
     return nil
 end
+function Gui.actor_name(player)
+    if player and player.valid then
+        return player.name
+    end
+    return { 'fp-admin.actor-rcon' }
+end
 return Gui

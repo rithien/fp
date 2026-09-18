@@ -448,12 +448,7 @@ function Public.refresh_all_open_panels()
         end
     end
 end
-function Public.actor_name(player)
-    if player and player.valid then
-        return player.name
-    end
-    return { 'fp-admin.actor-rcon' }
-end
+Public.actor_name = Gui.actor_name
 function Public.get_toggles()
     return toggles
 end
