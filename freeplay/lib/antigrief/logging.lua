@@ -7,7 +7,8 @@ local Constants = require 'constants'
 local Core = require 'lib.antigrief.core'
 local AdminPresence = require 'lib.antigrief.admin_presence'
 local ActionLog = require 'lib.antigrief.action_log'
-local AG = Constants.antigrief
+local LeaveReport = require 'lib.leave_report'
+local AG =Constants.antigrief
 local AUDIT = Constants.audit
 local format = string.format
 local floor = math.floor
@@ -392,6 +393,7 @@ local function on_built_entity(event)
     if not player or not player.valid then
         return
     end
+    LeaveReport.note_built(player)
     ActionLog.queue(player, 'build', entity)
 end
 local function get_distance(pos1, pos2)

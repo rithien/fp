@@ -7,7 +7,8 @@ local Constants = require 'constants'
 local Core = require 'lib.antigrief.core'
 local AdminPresence = require 'lib.antigrief.admin_presence'
 local ActionLog = require 'lib.antigrief.action_log'
-local Compat = require 'lib.compat'  
+local LeaveReport = require 'lib.leave_report'
+local Compat =require 'lib.compat'  
 local AG = Constants.antigrief
 local AUDIT = Constants.audit
 local format = string.format
@@ -55,15 +56,18 @@ local function on_marked_for_deconstruction(event)
     if should_hard_block(player, entity) then
         if AdminPresence.is_permissive() then
             log_admin_override(player, format(AUDIT.override_decon, entity.name, get_owner_name(entity)))
+            LeaveReport.note_removed(player, entity)
             return
         end
         entity.cancel_deconstruction(player.force.name, player.index)
+        LeaveReport.note_blocked(player, entity.name, entity.position, entity.surface.index)
         hard_block_action(player, 'deconstruct',
             format(AUDIT.deconstruct_mark, entity.name, get_owner_name(entity)))
         return
     end
     if is_logging_muted_for(player) then return end
     if entity.force.name ~= player.force.name then return end
+    LeaveReport.note_removed(player, entity)
     ActionLog.queue(player, 'decon', entity)
 end
 local function on_pre_ghost_deconstructed(event)
@@ -338,6 +342,7 @@ local function on_player_mined_entity(event)
             event.buffer.clear()
         end
         restore_entity(pending, player.name)
+        LeaveReport.note_blocked(player, pending.name, pending.position, pending.surface_index)
         hard_block_action(player, 'mining',
             format(AUDIT.mine, pending.name, pending.last_user_name or 'unknown'))
         return
@@ -354,6 +359,7 @@ local function on_player_mined_entity(event)
         ActionLog.queue(player, 'mine', entity)
         return
     end
+    LeaveReport.note_removed(player, entity)
     log_player_action(player, 'mining',
         format(AUDIT.mined_foreign, entity.name, get_owner_name(entity)), entity)
 end
