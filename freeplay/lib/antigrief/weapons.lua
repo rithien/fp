@@ -3,7 +3,8 @@ local FancyTime = require 'lib.fancy_time'
 local Server = require 'lib.server'
 local Constants = require 'constants'
 local Core = require 'lib.antigrief.core'
-local AG = Constants.antigrief
+local AdminPresence = require 'lib.antigrief.admin_presence'
+local AG =Constants.antigrief
 local AUDIT = Constants.audit
 local format = string.format
 local floor = math.floor
@@ -75,6 +76,9 @@ local function on_built_entity(event)
             return
         end
         if Session.get_trusted_player(player) or this.do_not_check_trusted then
+            return
+        end
+        if AdminPresence.is_permissive() then
             return
         end
         created_entity.destroy()
