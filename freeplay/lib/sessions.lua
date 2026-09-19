@@ -247,10 +247,15 @@ function Public.is_manually_untrusted(player)
 end
 function Public.set_trusted_player(player)
     if storage.trusted and player and player.valid then
-        storage.trusted[player.name] = true
-        storage.manually_untrusted[player.name] = nil
-        set_data(manually_untrusted_data_set, player.name, nil)
-        Server.notify_trust_change(player.name, true, 'manual')
+        ensure_init()
+        local name = player.name
+        if not storage.trusted[name] then
+            storage.trusted_local[name] = true
+        end
+        storage.manually_untrusted[name] = nil
+        set_data(manually_untrusted_data_set, name, nil)
+        DebugLog.log('[sessions] manual trust (local): %s (already_global=%s)',
+            name, tostring(storage.trusted[name] and true or false))
     end
 end
 function Public.set_untrusted_player(player)
