@@ -17,6 +17,7 @@ return {
     inserter_throughput = true, 
     belt_visualizer  = false,   
     bp_params        = false,   
+    turret_filler    = true,   
     spawn_logo       = true,   
     debug_log        = false,  
 }

@@ -85,6 +85,9 @@ function Public.set(key, value)
         return this
     end
 end
+function Public.is_ammo_blocked_for(player, item_name)
+    return Weapons.is_ammo_blocked_for(player, item_name)
+end
 Event.on_init(Core.bind_storage)
 Event.on_configuration_changed(Core.bind_storage)
 Event.on_load(Core.rebind)

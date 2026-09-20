@@ -8,7 +8,8 @@ local handlers = {
     on_selection_state_changed = {},
     on_checked_state_changed = {},
     on_switch_state_changed = {},
-    on_confirmed = {}
+    on_confirmed = {},
+    on_elem_changed = {}
 }
 local function make_dispatcher(map_name)
     local map = handlers[map_name]
@@ -43,6 +44,7 @@ Event.add(de.on_gui_selection_state_changed, make_dispatcher('on_selection_state
 Event.add(de.on_gui_checked_state_changed, make_dispatcher('on_checked_state_changed'))
 Event.add(de.on_gui_switch_state_changed, make_dispatcher('on_switch_state_changed'))
 Event.add(de.on_gui_confirmed, make_dispatcher('on_confirmed'))
+Event.add(de.on_gui_elem_changed, make_dispatcher('on_elem_changed'))
 function Gui.add(parent, def)
     if not def.tags or not def.tags.action then
         error('Gui.add: def.tags.action (string) is required', 2)
@@ -69,6 +71,9 @@ function Gui.on_switch_state_changed(action, handler)
 end
 function Gui.on_confirmed(action, handler)
     handlers.on_confirmed[action] = handler
+end
+function Gui.on_elem_changed(action, handler)
+    handlers.on_elem_changed[action] = handler
 end
 function Gui.destroy_if_exists(parent, name)
     if not parent or not parent.valid then

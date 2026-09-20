@@ -196,6 +196,22 @@ local function on_player_driving_changed_state(event)
     action_warning('[Vehicle]', format(AUDIT.vehicle_blocked, player.name, vehicle.name),
         { 'fp-antigrief.vehicle-blocked', player.name, vehicle.name })
 end
+local function is_ammo_blocked_for(player, item_name)
+    if not ammo_names[item_name] then
+        return false
+    end
+    if player.admin then
+        return false
+    end
+    if not this then
+        bind_storage() 
+    end
+    if Session.get_trusted_player(player) or this.do_not_check_trusted then
+        return false
+    end
+    return this.enable_capsule_cursor_warning and true or false
+end
+Weapons.is_ammo_blocked_for = is_ammo_blocked_for
 Weapons.on_player_ammo_inventory_changed = on_player_ammo_inventory_changed
 Weapons.on_built_entity = on_built_entity
 Weapons.on_player_used_capsule = on_player_used_capsule
