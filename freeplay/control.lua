@@ -69,6 +69,12 @@ _G.Token = require 'lib.token'
 _G.Sessions = require 'lib.sessions' 
 _G.ServerSelect = require 'lib.server_select' 
 _G.RconToggles = require 'gui.admin_panel.rcon_toggles' 
+_G.FpModules = {
+    constants = require 'constants',
+    config = require 'lib.config',
+    spawn_logo = require 'lib.spawn_logo',
+    crash_site = require 'crash-site',
+}
 Event.on_init(
     function()
         log('[factorio-polska] scenario loaded — all modules initialized')

@@ -3,7 +3,7 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
-local RENDER_VERSION = 7
+local RENDER_VERSION = 8
 local SWEEP_INTERVAL = 600
 local RENDER_LAYER_NAMES = {}
 for _, name in ipairs({
@@ -23,6 +23,8 @@ for _, name in ipairs({
     'light-effect', 'selection-box', 'higher-selection-box', 'collision-selection-box', 'arrow', 'cursor',
 }) do RENDER_LAYER_NAMES[name] = true end
 local Public = {}
+Public.RENDER_VERSION = RENDER_VERSION
+Public.RENDER_LAYER_NAMES = RENDER_LAYER_NAMES
 local function safe_destroy(obj)
     if obj and obj.valid then obj.destroy() end
 end
@@ -254,6 +256,7 @@ local function say(cmd, msg)
         local p = game.get_player(cmd.player_index)
         if p and p.valid then p.print(msg) end
     else
+        rcon.print(msg)
         log(msg)
     end
 end
@@ -307,10 +310,7 @@ Commands.new('spawnlogo', { 'fp-commands.spawnlogo-help' })
             end
         end
         local report = table.concat(lines, '\n')
-        log(report)
-        if cmd.player_index then
-            local p = game.get_player(cmd.player_index)
-            if p and p.valid then p.print(report) end
-        end
+        say(cmd, report)
+        if cmd.player_index then log(report) end
     end)
 return Public

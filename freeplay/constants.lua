@@ -52,7 +52,7 @@ Constants.spawn_logo = {
     sprite = 'file/img/world/sign.png',
     scale = 0.5306,
     render_layer = 'object',
-    position_offset = { x = 6, y = 0 },
+    position_offset = { x = 9, y = 0 },
     light = {
         enabled = true,
         sprite = 'utility/light_medium',
