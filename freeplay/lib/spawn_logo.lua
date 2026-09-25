@@ -3,8 +3,25 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
-local RENDER_VERSION = 6
+local RENDER_VERSION = 7
 local SWEEP_INTERVAL = 600
+local RENDER_LAYER_NAMES = {}
+for _, name in ipairs({
+    'zero', 'background-transitions', 'under-tiles', 'decals', 'above-tiles',
+    'ground-layer-1', 'ground-layer-2', 'ground-layer-3', 'ground-layer-4', 'ground-layer-5',
+    'lower-radius-visualization', 'radius-visualization', 'transport-belt-integration', 'resource',
+    'building-smoke', 'rail-stone-path-lower', 'rail-stone-path', 'rail-tie', 'decorative', 'ground-patch',
+    'ground-patch-higher', 'ground-patch-higher2', 'rail-chain-signal-metal', 'rail-screw', 'rail-metal',
+    'remnants', 'floor', 'transport-belt', 'transport-belt-endings', 'floor-mechanics-under-corpse', 'corpse',
+    'floor-mechanics', 'item', 'transport-belt-reader', 'lower-object', 'transport-belt-circuit-connector',
+    'lower-object-above-shadow', 'lower-object-overlay', 'object-under', 'object', 'cargo-hatch',
+    'higher-object-under', 'higher-object-above', 'train-stop-top', 'item-in-inserter-hand', 'above-inserters',
+    'wires', 'under-elevated', 'elevated-rail-stone-path-lower', 'elevated-rail-stone-path', 'elevated-rail-tie',
+    'elevated-rail-screw', 'elevated-rail-metal', 'elevated-rail-above-metal', 'elevated-lower-object',
+    'elevated-object', 'elevated-higher-object', 'fluid-visualization', 'wires-above', 'entity-info-icon',
+    'entity-info-icon-above', 'explosion', 'projectile', 'smoke', 'air-object', 'air-entity-info-icon',
+    'light-effect', 'selection-box', 'higher-selection-box', 'collision-selection-box', 'arrow', 'cursor',
+}) do RENDER_LAYER_NAMES[name] = true end
 local Public = {}
 local function safe_destroy(obj)
     if obj and obj.valid then obj.destroy() end
@@ -29,6 +46,19 @@ local function ensure_storage()
 end
 local function is_enabled()
     return Config.is_enabled(TOGGLE_ID)
+end
+local function is_valid_render_layer(name)
+    if type(name) ~= 'string' then return false end
+    if RENDER_LAYER_NAMES[name] then return true end
+    local n = name:match('^%d+$') and tonumber(name)
+    return n ~= nil and n <= 255
+end
+local function effective_render_layer()
+    local s = storage.spawn_logo
+    if s and s.render_layer_override then
+        return s.render_layer_override, 'override'
+    end
+    return Constants.spawn_logo.render_layer or 'object', 'constants'
 end
 local function is_logo_surface(surface)
     local ok_pf, platform = pcall(function() return surface.platform end)
@@ -87,14 +117,22 @@ local function prune_dead_surfaces()
         end
     end
 end
+local function valid_sprite_count()
+    local n = 0
+    for _, entry in pairs(storage.spawn_logo.surfaces) do
+        if entry.sprite and entry.sprite.valid then n = n + 1 end
+    end
+    return n
+end
 local function draw(surface)
     local cfg = Constants.spawn_logo
     local pos = logo_position(surface)
+    local layer = effective_render_layer()
     local entry = { sprite = nil, light = nil, texts = {} }
     local ok, sprite = pcall(function()
         return rendering.draw_sprite({
             sprite = cfg.sprite,
-            render_layer = cfg.render_layer or 'floor',
+            render_layer = layer,
             target = pos,
             x_scale = cfg.scale,
             y_scale = cfg.scale,
@@ -102,16 +140,16 @@ local function draw(surface)
         })
     end)
     if not ok or not sprite then
-        DebugLog.log('[spawn_logo] draw — sprite "%s" niegotowy na "%s" (early lifecycle), ponowię przy następnym sweepie',
-            tostring(cfg.sprite), surface.name)
+        DebugLog.log('[spawn_logo] draw — sprite "%s" (layer %s) niegotowy na "%s" (early lifecycle lub odrzucona warstwa), ponowię przy następnym sweepie',
+            tostring(cfg.sprite), tostring(layer), surface.name)
         return pos
     end
     entry.sprite = sprite
     if cfg.light and cfg.light.enabled then
+        local loff = cfg.light.offset or { x = 0, y = 0 }
         entry.light = rendering.draw_light({
             sprite = cfg.light.sprite or 'utility/light_medium',
-            render_layer = cfg.render_layer or 'floor',
-            target = pos,
+            target = { x = pos.x + (loff.x or 0), y = pos.y + (loff.y or 0) },
             scale = cfg.light.scale or 6,
             surface = surface,
             minimum_darkness = cfg.light.minimum_darkness or 0.1,
@@ -131,8 +169,8 @@ local function draw(surface)
         })
     end
     storage.spawn_logo.surfaces[surface.index] = entry
-    DebugLog.log('[spawn_logo] draw — surface "%s" @ (%.1f,%.1f) scale=%s lines=%d',
-        surface.name, pos.x, pos.y, tostring(cfg.scale), #entry.texts)
+    DebugLog.log('[spawn_logo] draw — surface "%s" @ (%.1f,%.1f) scale=%s layer=%s lines=%d',
+        surface.name, pos.x, pos.y, tostring(cfg.scale), tostring(layer), #entry.texts)
     return pos
 end
 local function cleanup_legacy_info_panel()
@@ -179,6 +217,7 @@ local function ensure()
     if s.code_version ~= RENDER_VERSION then
         destroy_all()
         s.code_version = RENDER_VERSION
+        s.render_layer_override = nil
     end
     prune_dead_surfaces()
     for _, surface in pairs(target_surfaces()) do
@@ -210,16 +249,48 @@ Event.add(defines.events.on_surface_created, function()
 end)
 Event.on_nth_tick(SWEEP_INTERVAL, ensure)
 local Commands = require 'lib.commands'
-Commands.new('spawnlogo', 'Force-redraw the spawn logo on every planet and report status (admin)')
+local function say(cmd, msg)
+    if cmd.player_index then
+        local p = game.get_player(cmd.player_index)
+        if p and p.valid then p.print(msg) end
+    else
+        log(msg)
+    end
+end
+Commands.new('spawnlogo', { 'fp-commands.spawnlogo-help' })
     :require_admin()
-    :callback(function(cmd)
+    :add_parameter('layer', true, 'string')
+    :callback(function(cmd, layer)
         ensure_storage()
-        redraw()
         local cfg = Constants.spawn_logo
         local s = storage.spawn_logo
+        local base_layer = tostring(cfg.render_layer or 'object')
+        local previous = s.render_layer_override
+        local msg
+        if layer == 'reset' then
+            s.render_layer_override = nil
+            msg = { 'fp-commands.spawnlogo-layer-reset', base_layer }
+        elseif layer then
+            if not is_valid_render_layer(layer) then
+                say(cmd, { 'fp-commands.spawnlogo-layer-invalid', layer })
+                return
+            end
+            s.render_layer_override = layer
+            msg = { 'fp-commands.spawnlogo-layer-set', layer, base_layer }
+        end
+        redraw()
+        if layer and layer ~= 'reset' and is_enabled() and #target_surfaces() > 0 and valid_sprite_count() == 0 then
+            s.render_layer_override = previous
+            redraw()
+            msg = { 'fp-commands.spawnlogo-layer-rejected', layer }
+        end
+        if msg then say(cmd, msg) end
+        local eff_layer, layer_source = effective_render_layer()
+        local off = cfg.position_offset or { x = 0, y = 0 }
         local lines = {
-            string.format('[spawn_logo] toggle=%s sprite="%s" scale=%s',
-                tostring(is_enabled()), tostring(cfg.sprite), tostring(cfg.scale)),
+            string.format('[spawn_logo] toggle=%s sprite="%s" scale=%s layer=%s (%s) offset=(%s,%s)',
+                tostring(is_enabled()), tostring(cfg.sprite), tostring(cfg.scale),
+                tostring(eff_layer), layer_source, tostring(off.x or 0), tostring(off.y or 0)),
         }
         local surfaces = target_surfaces()
         if #surfaces == 0 then

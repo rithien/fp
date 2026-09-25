@@ -49,15 +49,16 @@ Constants.untrusted = {
     },
 }
 Constants.spawn_logo = {
-    sprite = 'file/img/world/logo-pad.png',
-    scale = 0.32,
-    render_layer = 'floor',
-    position_offset = { x = 0, y = 0 },
+    sprite = 'file/img/world/sign.png',
+    scale = 0.5306,
+    render_layer = 'object',
+    position_offset = { x = 6, y = 0 },
     light = {
         enabled = true,
         sprite = 'utility/light_medium',
         scale = 6,
         minimum_darkness = 0.1,
+        offset = { x = -0.155, y = -5.392 },
     },
     text_lines = {},
 }
