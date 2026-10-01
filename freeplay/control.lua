@@ -11,6 +11,7 @@ require 'lib.freeplay'
 require 'lib.sessions'             
 require 'lib.jail'                 
 require 'lib.untrusted'            
+require 'lib.player_status'        
 require 'lib.antigrief'            
 require 'lib.leave_report'         
 require 'lib.player_presence'      
@@ -69,11 +70,13 @@ _G.Token = require 'lib.token'
 _G.Sessions = require 'lib.sessions' 
 _G.ServerSelect = require 'lib.server_select' 
 _G.RconToggles = require 'gui.admin_panel.rcon_toggles' 
+_G.PlayerStatus = require 'lib.player_status' 
 _G.FpModules = {
     constants = require 'constants',
     config = require 'lib.config',
     spawn_logo = require 'lib.spawn_logo',
     crash_site = require 'crash-site',
+    jail = require 'lib.jail',
 }
 Event.on_init(
     function()

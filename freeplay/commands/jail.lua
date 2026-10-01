@@ -20,7 +20,7 @@ Commands.new('jail', { 'fp-commands.jail-help' })
         end
         local reason = cmd.parameter and cmd.parameter:gsub('^%s*%S+%s*', '') or ''
         local by = cmd.player_index and game.get_player(cmd.player_index)
-        local source = (by and by.valid and by.name) or 'global list'
+        local source = (by and by.valid and by.name) or 'RCON'
         if reason == '' then
             reason = string.format(AUDIT.jailed_by, source)
         end

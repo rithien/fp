@@ -28,6 +28,7 @@ local function ensure_init()
     storage.online_track = storage.online_track or {}
     storage.trusted = storage.trusted or {}
     storage.trusted_local = storage.trusted_local or {}
+    storage.trusted_remote = storage.trusted_remote or {}
     storage.trusted_local_baseline = storage.trusted_local_baseline or {}
     storage.manually_untrusted = storage.manually_untrusted or {}
     storage.sessions_upload_inflight = storage.sessions_upload_inflight or {}
@@ -71,7 +72,7 @@ end
 local function try_grant_local_trust(player)
     if not (player and player.valid and player.connected) then return end
     local name = player.name
-    if storage.trusted[name] or storage.trusted_local[name] then return end
+    if storage.trusted[name] or storage.trusted_local[name] or storage.trusted_remote[name] then return end
     if storage.manually_untrusted[name] or not storage.sessions_sticky_resolved[name] then return end
     local clean_time = player.online_time - (storage.trusted_local_baseline[name] or 0)
     if clean_time < Public.get_local_trusted_threshold() then return end
@@ -141,10 +142,9 @@ local try_download_manually_untrusted_token = Token.register(function(data)
     storage.sessions_sticky_resolved[player_name] = true
     if data.value then
         storage.manually_untrusted[player_name] = true
-        if storage.trusted[player_name] then
-            storage.trusted[player_name] = nil 
-        end
+        storage.trusted[player_name] = nil
         storage.trusted_local[player_name] = nil
+        storage.trusted_remote[player_name] = nil
     else
         try_grant_local_trust(game.get_player(player_name))
     end
@@ -232,12 +232,13 @@ function Public.get_trusted_player(player)
     if not storage.trusted then return false end
     if not (player and player.valid) then return false end
     local name = player.name
-    return storage.trusted[name] or (storage.trusted_local and storage.trusted_local[name]) or false
+    return storage.trusted[name] or (storage.trusted_local and storage.trusted_local[name])
+        or (storage.trusted_remote and storage.trusted_remote[name]) or false
 end
 function Public.get_trust_scope(player)
     if not storage.trusted or not (player and player.valid) then return nil end
     local name = player.name
-    if storage.trusted[name] then return 'global' end
+    if storage.trusted[name] or (storage.trusted_remote and storage.trusted_remote[name]) then return 'global' end
     if storage.trusted_local and storage.trusted_local[name] then return 'local' end
     return nil
 end
@@ -260,8 +261,10 @@ function Public.set_trusted_player(player)
 end
 function Public.set_untrusted_player(player)
     if storage.trusted and player and player.valid then
+        ensure_init()
         storage.trusted[player.name] = nil
-        if storage.trusted_local then storage.trusted_local[player.name] = nil end
+        storage.trusted_local[player.name] = nil
+        storage.trusted_remote[player.name] = nil
         storage.manually_untrusted[player.name] = true
         set_data(manually_untrusted_data_set, player.name, 1)
         Server.notify_trust_change(player.name, false)
@@ -270,17 +273,17 @@ end
 function Public.apply_remote_trust(player_name)
     ensure_init()
     player_name = tostring(player_name)
-    if storage.manually_untrusted[player_name] then return false end 
-    if storage.trusted[player_name] then return false end            
-    storage.trusted[player_name] = true
+    storage.manually_untrusted[player_name] = nil
+    if storage.trusted_remote[player_name] then return false end
+    storage.trusted_remote[player_name] = true
     notify_trust_refreshed(player_name)
     return true
 end
 function Public.apply_remote_untrust(player_name)
     ensure_init()
     player_name = tostring(player_name)
-    if not storage.trusted[player_name] then return false end
-    storage.trusted[player_name] = nil
+    if not storage.trusted_remote[player_name] then return false end
+    storage.trusted_remote[player_name] = nil
     notify_trust_refreshed(player_name)
     return true
 end
@@ -291,13 +294,14 @@ end
 function Public.get_remaining_trust_ticks(player)
     if not (player and player.valid) then return 0 end
     ensure_init()
-    if storage.trusted[player.name] or storage.trusted_local[player.name] then return 0 end
-    local base = storage.sessions[player.name] or 0
-    local track = storage.online_track[player.name] or 0
+    local name = player.name
+    if storage.trusted[name] or storage.trusted_local[name] or storage.trusted_remote[name] then return 0 end
+    local base = storage.sessions[name] or 0
+    local track = storage.online_track[name] or 0
     local delta = player.online_time - track
     if delta < 0 then delta = 0 end 
     local remaining = Public.get_trusted_threshold() - (base + delta)
-    local clean_time = player.online_time - (storage.trusted_local_baseline[player.name] or 0)
+    local clean_time = player.online_time - (storage.trusted_local_baseline[name] or 0)
     local remaining_local = Public.get_local_trusted_threshold() - clean_time
     if remaining_local < remaining then remaining = remaining_local end
     if remaining < 0 then remaining = 0 end
@@ -366,9 +370,10 @@ Server.on_data_set_changed(manually_untrusted_data_set, function(data)
     local player_name = data.key
     if data.value then
         storage.manually_untrusted[player_name] = true
-        if storage.trusted[player_name] or storage.trusted_local[player_name] then
+        if storage.trusted[player_name] or storage.trusted_local[player_name] or storage.trusted_remote[player_name] then
             storage.trusted[player_name] = nil
             storage.trusted_local[player_name] = nil
+            storage.trusted_remote[player_name] = nil
             notify_trust_refreshed(player_name) 
         end
     else

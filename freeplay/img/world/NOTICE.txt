@@ -1,4 +1,4 @@
-img/world/sign.png is the "Factorio Polska was here" sign (https://factorio.space) with the Factorio Polska logo.
+img/world/sign.png is the "Rithien was here" sign (https://factorio.space) with the Factorio Polska logo.
 
 It is not covered by the MIT license of this repository; all rights reserved by Factorio Polska.
 You may redistribute it only as part of unmodified copies of this scenario. Forks must remove or

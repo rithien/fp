@@ -81,6 +81,7 @@ Constants.audit = {
     override_ghost   = 'admin-override: deconstructed ghost %s (owner: %s)',
     override_combat  = 'admin-override: destroyed %s with weapon/vehicle (owner: %s)',
     banned_by = 'Banned by %s',                          
+    global_ban = 'Global ban list',                      
     hard_block_ban = 'Hard-block %s: %d strikes ignored after a kick (%s)',
     hard_block_kick = 'Kicked: interfering with %s belonging to other players. Reoffending after reconnect = permanent ban.',
     long_text_spam_ban = 'Long-text spam, 4× warnings ignored',
