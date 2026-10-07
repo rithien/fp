@@ -53,6 +53,7 @@ require 'lib.auto_pipe_connectors'
 require 'gui.auto_pipe_connectors_button' 
 require 'lib.show_signals'        
 require 'gui.show_signals_button' 
+require 'lib.show_entity_info'    
 require 'lib.bp_params'            
 require 'gui.bp_params_window'     
 require 'gui.bp_params_button'     
@@ -77,6 +78,7 @@ _G.FpModules = {
     spawn_logo = require 'lib.spawn_logo',
     crash_site = require 'crash-site',
     jail = require 'lib.jail',
+    show_entity_info = require 'lib.show_entity_info',
 }
 Event.on_init(
     function()
