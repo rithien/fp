@@ -3,7 +3,7 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
-local RENDER_VERSION = 10
+local RENDER_VERSION = 11
 local SWEEP_INTERVAL = 600
 local RENDER_LAYER_NAMES = {}
 for _, name in ipairs({
@@ -62,14 +62,28 @@ local function effective_render_layer()
     end
     return Constants.spawn_logo.render_layer or 'object', 'constants'
 end
+local function planet_name(surface)
+    local ok, name = pcall(function()
+        local planet = surface.planet
+        return planet and planet.name or nil
+    end)
+    if ok and type(name) == 'string' then return name end
+    return surface.name
+end
+local function is_excluded_planet(surface)
+    local excluded = Constants.spawn_logo.excluded_planets or {}
+    return excluded[planet_name(surface)] == true
+end
 local function is_logo_surface(surface)
     local ok_pf, platform = pcall(function() return surface.platform end)
     if ok_pf and platform then return false end
+    if is_excluded_planet(surface) then return false end
     if surface == game.surfaces[1] then return true end
     local ok_pl, planet = pcall(function() return surface.planet end)
     if ok_pl and planet then return true end
     return false
 end
+Public.is_logo_surface = is_logo_surface
 local function target_surfaces()
     local result = {}
     for _, surface in pairs(game.surfaces) do
@@ -78,6 +92,23 @@ local function target_surfaces()
         end
     end
     return result
+end
+local function excluded_surfaces()
+    local result = {}
+    for _, surface in pairs(game.surfaces) do
+        if surface and surface.valid and is_excluded_planet(surface) then
+            result[#result + 1] = surface
+        end
+    end
+    return result
+end
+local function excluded_planet_list()
+    local names = {}
+    for name, on in pairs(Constants.spawn_logo.excluded_planets or {}) do
+        if on then names[#names + 1] = tostring(name) end
+    end
+    table.sort(names)
+    return #names > 0 and table.concat(names, ',') or 'none'
 end
 local function logo_position(surface)
     local cfg = Constants.spawn_logo
@@ -110,12 +141,16 @@ local function destroy_all()
     DebugLog.log('[spawn_logo] destroy_all — render-objekty usunięte (%d powierzchni)', n)
 end
 Public.destroy_all = destroy_all
-local function prune_dead_surfaces()
+local function prune_stale_entries()
     local s = storage.spawn_logo
     for idx in pairs(s.surfaces) do
         local surf = game.get_surface(idx)
         if not (surf and surf.valid) then
             destroy_entry(idx)
+        elseif not is_logo_surface(surf) then
+            destroy_entry(idx)
+            DebugLog.log('[spawn_logo] prune — surface "%s" poza zakresem tablicy (wykluczona planeta), render-objekty usunięte',
+                surf.name)
         end
     end
 end
@@ -221,7 +256,7 @@ local function ensure()
         s.code_version = RENDER_VERSION
         s.render_layer_override = nil
     end
-    prune_dead_surfaces()
+    prune_stale_entries()
     for _, surface in pairs(target_surfaces()) do
         ensure_surface(surface)
     end
@@ -230,7 +265,7 @@ Public.ensure = ensure
 local function redraw()
     destroy_all()
     if is_enabled() then
-        prune_dead_surfaces()
+        prune_stale_entries()
         for _, surface in pairs(target_surfaces()) do
             draw(surface)
         end
@@ -291,9 +326,9 @@ Commands.new('spawnlogo', { 'fp-commands.spawnlogo-help' })
         local eff_layer, layer_source = effective_render_layer()
         local off = cfg.position_offset or { x = 0, y = 0 }
         local lines = {
-            string.format('[spawn_logo] toggle=%s sprite="%s" scale=%s layer=%s (%s) offset=(%s,%s)',
+            string.format('[spawn_logo] toggle=%s sprite="%s" scale=%s layer=%s (%s) offset=(%s,%s) excluded=%s',
                 tostring(is_enabled()), tostring(cfg.sprite), tostring(cfg.scale),
-                tostring(eff_layer), layer_source, tostring(off.x or 0), tostring(off.y or 0)),
+                tostring(eff_layer), layer_source, tostring(off.x or 0), tostring(off.y or 0), excluded_planet_list()),
         }
         local surfaces = target_surfaces()
         if #surfaces == 0 then
@@ -308,6 +343,9 @@ Commands.new('spawnlogo', { 'fp-commands.spawnlogo-help' })
                     tostring(entry ~= nil and entry.light ~= nil and entry.light.valid),
                     entry and #(entry.texts or {}) or 0)
             end
+        end
+        for _, surface in pairs(excluded_surfaces()) do
+            lines[#lines + 1] = string.format('  surface "%s" skipped (excluded planet)', surface.name)
         end
         local report = table.concat(lines, '\n')
         say(cmd, report)

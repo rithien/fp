@@ -53,6 +53,7 @@ Constants.spawn_logo = {
     scale = 0.5306,
     render_layer = 'object',
     position_offset = { x = 9, y = 0 },
+    excluded_planets = { aquilo = true },
     light = {
         enabled = true,
         sprite = 'utility/light_medium',
