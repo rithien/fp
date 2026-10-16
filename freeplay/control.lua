@@ -79,6 +79,7 @@ _G.FpModules = {
     crash_site = require 'crash-site',
     jail = require 'lib.jail',
     show_entity_info = require 'lib.show_entity_info',
+    antigrief_core = require 'lib.antigrief.core',
 }
 Event.on_init(
     function()

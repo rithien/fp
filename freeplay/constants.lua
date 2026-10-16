@@ -99,7 +99,7 @@ Constants.audit = {
     mass_decon_alert = '[Deconstruct] %s tried to deconstruct: %s entities!',
     feedback_title = 'New report from %s',
     leave_report_title = 'Leave report: %s [%s]',
-    leave_report_body = 'left without rebuilding — removed %d, blocked attempts %d on foreign entities (%s); first at X:%d Y:%d surface:%d, %dm %02ds before leaving (reason: %s)',
+    leave_report_body = 'left without rebuilding — removed %d, blocked attempts %d on foreign entities (%s); first at X:%d Y:%d %s, %dm %02ds before leaving (reason: %s)',
 }
 Constants.todo_list = {
     window_max_height = 600,  

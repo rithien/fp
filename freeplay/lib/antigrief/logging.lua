@@ -70,7 +70,7 @@ local function on_player_built_tile(event)
     str = str .. ' Y:'
     str = str .. placed_tiles[1].position.y
     str = str .. ' '
-    str = str .. 'surface:' .. surface
+    str = str .. Core.surface_label(surface)
     Server.log_antigrief_data('landfill', str, nil, player.name)
 end
 local function on_console_command(event)
@@ -168,7 +168,7 @@ local function on_player_cancelled_crafting(event)
         str = str .. ' Y:'
         str = str .. floor(player.position.y)
         str = str .. ' '
-        str = str .. 'surface:' .. player.surface.index
+        str = str .. Core.surface_label(player.surface)
         Server.log_antigrief_data('cancel_crafting', str, nil, player.name)
     end
 end
@@ -248,10 +248,10 @@ local function on_player_deconstructed_area(event)
         if count > 0 then
             local t = abs(floor((game.tick) / 60))
             local formatted = FancyTime.short_fancy_time(t)
-            local str = format('[%s] %s area-deconstructed %d foreign entities at lt_x:%d lt_y:%d rb_x:%d rb_y:%d surface:%d',
+            local str = format('[%s] %s area-deconstructed %d foreign entities at lt_x:%d lt_y:%d rb_x:%d rb_y:%d %s',
                 formatted, player.name, count,
                 floor(area.left_top.x), floor(area.left_top.y),
-                floor(area.right_bottom.x), floor(area.right_bottom.y), surface.index)
+                floor(area.right_bottom.x), floor(area.right_bottom.y), Core.surface_label(surface))
             Server.log_antigrief_data('deconstruct', str, nil, player.name)
         end
         return
@@ -279,7 +279,7 @@ local function on_player_deconstructed_area(event)
         str = str .. ' at rb_y:'
         str = str .. floor(area.right_bottom.y)
         str = str .. ' '
-        str = str .. 'surface:' .. surface.index
+        str = str .. Core.surface_label(surface)
         Server.log_antigrief_data('deconstruct', str, 'block', player.name)
         Session.reset_local_trust_clock(player) 
         if this.enable_jail_when_decon then 
@@ -440,7 +440,7 @@ local function flush_robot_mining_logs()
                     str = str .. ' Y:'
                     str = str .. floor(cluster.position.y)
                     str = str .. ' '
-                    str = str .. 'surface:' .. cluster.surface_index
+                    str = str .. Core.surface_label(cluster.surface_index)
                     Server.log_antigrief_data('mining', str, nil, player.name)
                     entities_to_remove[entity_name] = true
                     processed = processed + 1

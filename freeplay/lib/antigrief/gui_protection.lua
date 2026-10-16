@@ -39,7 +39,7 @@ local function on_gui_opened(event)
         str = str .. ' Y:'
         str = str .. floor(entity.position.y)
         str = str .. ' '
-        str = str .. 'surface:' .. entity.surface.index
+        str = str .. Core.surface_label(entity.surface)
         Server.log_antigrief_data('corpse', str, nil, player.name)
     end
 end

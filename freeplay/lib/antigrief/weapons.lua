@@ -139,7 +139,7 @@ local function on_player_used_capsule(event)
         str = str .. ' Y:'
         str = str .. floor(position.y)
         str = str .. ' '
-        str = str .. 'surface:' .. player.surface.index
+        str = str .. Core.surface_label(player.surface)
         Server.log_antigrief_data('capsule', str, severity, player.name)
     end
 end

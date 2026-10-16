@@ -90,7 +90,7 @@ Event.add(defines.events.on_player_left_game, function(event)
     local flagged_s = floor((game.tick - entry.since_tick) / 60)
     local text = format(AUDIT.leave_report_body,
         entry.removed, entry.blocked, top_names(entry.names),
-        entry.x, entry.y, entry.surface,
+        entry.x, entry.y, Core.surface_label(entry.surface),
         floor(flagged_s / 60), flagged_s % 60,
         PlayerPresence.reason_name(event.reason))
     DebugLog.log('[leave_report] REPORT %s [%s]: %s', player.name, trust, text)

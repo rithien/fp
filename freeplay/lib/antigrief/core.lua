@@ -304,13 +304,23 @@ local function is_foreign_same_force(player, entity)
     if not last_user or not last_user.valid then return false end
     return last_user.name ~= player.name
 end
+local function surface_label(surface_or_index)
+    local surface = surface_or_index
+    if type(surface_or_index) == 'number' then
+        surface = game.get_surface(surface_or_index)
+    end
+    if surface and surface.valid then
+        return format('surface:%d (%s)', surface.index, surface.name)
+    end
+    return 'surface:' .. (type(surface_or_index) == 'number' and surface_or_index or '?')
+end
 local function log_player_action(player, category, action_msg, entity)
     if not player or not player.valid then return end
     if not entity or not entity.valid then return end
     local t = abs(floor((game.tick) / 60))
     local formatted = FancyTime.short_fancy_time(t)
-    local str = format('[%s] %s %s at X:%d Y:%d surface:%d', formatted, player.name, action_msg,
-        floor(entity.position.x), floor(entity.position.y), entity.surface.index)
+    local str = format('[%s] %s %s at X:%d Y:%d %s', formatted, player.name, action_msg,
+        floor(entity.position.x), floor(entity.position.y), surface_label(entity.surface))
     Server.log_antigrief_data(category, str, nil, player.name)
 end
 local function log_admin_override(player, action_msg)
@@ -334,5 +344,6 @@ Core.hard_block_action = hard_block_action
 Core.is_foreign_same_force = is_foreign_same_force
 Core.log_player_action = log_player_action
 Core.log_admin_override = log_admin_override
+Core.surface_label = surface_label
 Core.get_defaults = get_defaults
 return Core

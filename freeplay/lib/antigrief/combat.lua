@@ -157,7 +157,7 @@ local function on_entity_died(event)
         str = str .. ' Y:'
         str = str .. floor(event.entity.position.y)
         str = str .. ' '
-        str = str .. 'surface:' .. event.entity.surface.index
+        str = str .. Core.surface_label(event.entity.surface)
         Server.log_antigrief_data('friendly_fire', str, nil, name)
     end
 end

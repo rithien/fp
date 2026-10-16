@@ -36,7 +36,7 @@ local function emit_cluster(player, kind, cluster)
         str = str .. ' Y:'
         str = str .. floor(cluster.position.y)
         str = str .. ' '
-        str = str .. 'surface:' .. cluster.surface_index
+        str = str .. Core.surface_label(cluster.surface_index)
         Server.log_antigrief_data(spec.category, str, nil, player.name)
         lines = lines + 1
     end
