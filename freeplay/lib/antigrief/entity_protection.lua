@@ -270,7 +270,7 @@ local function place_restore_ghost(surface, pending)
 end
 local function notify_online_admins(localised_msg)
     for _, p in pairs(game.connected_players) do
-        if p.admin then p.print(localised_msg, { r = 1, g = 0.6, b = 0.2 }) end
+        if Core.is_staff(p) then p.print(localised_msg, { r = 1, g = 0.6, b = 0.2 }) end
     end
 end
 local recreate_retry_token

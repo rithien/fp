@@ -9,6 +9,7 @@ require 'lib.compat'
 require 'lib.server'               
 require 'lib.freeplay'             
 require 'lib.sessions'             
+require 'lib.manager'              
 require 'lib.jail'                 
 require 'lib.untrusted'            
 require 'lib.player_status'        
@@ -80,6 +81,8 @@ _G.FpModules = {
     jail = require 'lib.jail',
     show_entity_info = require 'lib.show_entity_info',
     antigrief_core = require 'lib.antigrief.core',
+    admin_presence = require 'lib.antigrief.admin_presence',
+    manager = require 'lib.manager',
 }
 Event.on_init(
     function()

@@ -1,4 +1,6 @@
 local Event = require 'lib.event'
+local Manager = require 'lib.manager'
+local Jail = require 'lib.jail'
 local Core = require 'lib.antigrief.core'
 local EntityProtection = require 'lib.antigrief.entity_protection'
 local GuiProtection = require 'lib.antigrief.gui_protection'
@@ -131,4 +133,6 @@ Event.add(de.on_player_joined_game, AdminPresence.on_player_joined_game)
 Event.add(de.on_player_left_game, AdminPresence.on_player_left_game)
 Event.add(de.on_player_promoted, AdminPresence.on_player_promoted)
 Event.add(de.on_player_demoted, AdminPresence.on_player_demoted)
+Event.add(Manager.events.on_manager_changed, AdminPresence.on_manager_changed)
+Jail.on_jail_state_changed(function() AdminPresence.reevaluate() end)
 return Public

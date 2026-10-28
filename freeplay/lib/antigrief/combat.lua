@@ -35,7 +35,7 @@ local function occupant_player(occupant)
 end
 local function is_exempt(player)
     if not player or not player.valid then return true end
-    if player.admin then return true end
+    if Core.is_staff(player) then return true end
     if this.do_not_check_trusted then return true end
     return Session.get_trusted_player(player) and true or false
 end
@@ -84,7 +84,7 @@ local function combat_recreate(event)
     local victim = event.entity
     if not (victim and victim.valid) then return false end
     if not is_foreign_same_force(attacker, victim) then return false end
-    if attacker.admin then return false end
+    if Core.is_staff(attacker) then return false end
     if this.do_not_check_trusted then return false end
     local trusted = Session.get_trusted_player(attacker)
     if AdminPresence.is_permissive() then
@@ -167,7 +167,7 @@ local function on_entity_damaged(event)
     local entity = event.entity
     if not entity or not entity.valid then return end
     if not is_foreign_same_force(player, entity) then return end
-    if player.admin then return end
+    if Core.is_staff(player) then return end
     if this.do_not_check_trusted then return end
     if AdminPresence.is_permissive() then return end
     local trusted = Session.get_trusted_player(player)

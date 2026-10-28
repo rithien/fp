@@ -3,6 +3,7 @@ local Token = require 'lib.token'
 local Server = require 'lib.server'
 local Sessions = require 'lib.sessions'
 local Jail = require 'lib.jail'
+local Manager = require 'lib.manager'
 local DebugLog = require 'lib.debug_log'
 local Constants = require 'constants'
 local DATA_SET = 'player_status'
@@ -13,9 +14,9 @@ end
 function Public.apply(name, state)
     if type(name) ~= 'string' or name == '' or type(state) ~= 'table' then return end
     local player = game.get_player(name)
-    DebugLog.log('[player_status] apply %s: banned=%s admin=%s jailed=%s trusted=%s known=%s',
+    DebugLog.log('[player_status] apply %s: banned=%s admin=%s jailed=%s trusted=%s manager=%s known=%s',
         name, tostring(state.banned), tostring(state.admin), tostring(state.jailed),
-        tostring(state.trusted), tostring(player ~= nil))
+        tostring(state.trusted), tostring(state.manager), tostring(player ~= nil))
     if state.banned then
         if player and player.valid then
             game.ban_player(player, non_empty(state.ban_reason) or Constants.audit.global_ban)
@@ -34,6 +35,9 @@ function Public.apply(name, state)
         Sessions.apply_remote_trust(name)
     else
         Sessions.apply_remote_untrust(name)
+    end
+    if state.manager ~= nil then
+        Manager.apply_remote(name, state.manager and true or false)
     end
 end
 local fetch_token = Token.register(function(data)

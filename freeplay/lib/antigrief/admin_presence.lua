@@ -1,11 +1,13 @@
 local Core = require 'lib.antigrief.core'
+local Manager = require 'lib.manager'
+local Jail = require 'lib.jail'
 local AdminPresence = {}
 local this
 Core.register_binder(function(s) this = s end)
 local color_yellow = { r = 1, g = 1, b = 0 }
 local function any_admin_online()
     for _, p in pairs(game.connected_players) do
-        if p.admin then return true end
+        if (p.admin or Manager.is_manager(p.name)) and not Jail.is_jailed(p.name) then return true end
     end
     return false
 end
@@ -35,4 +37,5 @@ function AdminPresence.on_player_joined_game(_) AdminPresence.reevaluate() end
 function AdminPresence.on_player_left_game(_) AdminPresence.reevaluate() end
 function AdminPresence.on_player_promoted(_) AdminPresence.reevaluate() end
 function AdminPresence.on_player_demoted(_) AdminPresence.reevaluate() end
+function AdminPresence.on_manager_changed(_) AdminPresence.reevaluate() end
 return AdminPresence

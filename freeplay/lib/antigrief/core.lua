@@ -1,5 +1,6 @@
 local Session = require 'lib.sessions'
 local Jail = require 'lib.jail'
+local Manager = require 'lib.manager'
 local FancyTime = require 'lib.fancy_time'
 local Task = require 'lib.task'
 local Token = require 'lib.token'
@@ -240,7 +241,7 @@ local function get_owner_name(entity)
 end
 local function should_hard_block(player, entity)
     if not player or not player.valid then return false end
-    if player.admin then return false end
+    if Manager.is_staff(player) then return false end
     if this.do_not_check_trusted then return false end
     if Session.get_trusted_player(player) then return false end
     if not entity or not entity.valid then return false end
@@ -334,6 +335,7 @@ Core.action_warning = action_warning
 Core.print_to = print_to
 Core.log_msg = log_msg
 Core.is_logging_muted_for = is_logging_muted_for
+Core.is_staff = Manager.is_staff
 Core.get_entities = get_entities
 Core.damage_player = damage_player
 Core.do_action = do_action

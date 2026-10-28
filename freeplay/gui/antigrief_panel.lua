@@ -3,6 +3,7 @@ local Gui = require 'gui.init'
 local Antigrief = require 'lib.antigrief'
 local Jail = require 'lib.jail'
 local Session = require 'lib.sessions'
+local Manager = require 'lib.manager'
 local TopButtons = require 'gui.top_buttons'
 local Constants = require 'constants'
 local AUDIT = Constants.audit 
@@ -23,6 +24,7 @@ local PLAYERS_UNJAIL_ACTION = 'antigrief_players_unjail'
 local PLAYERS_TRUST_ACTION = 'antigrief_players_trust'
 local PLAYERS_UNTRUST_ACTION = 'antigrief_players_untrust'
 local PLAYERS_ADMIN_ACTION = 'antigrief_players_admin'
+local PLAYERS_MANAGER_ACTION = 'antigrief_players_manager'
 local PLAYERS_DROPDOWN_NAME = 'antigrief_players_dropdown'
 local PLAYERS_FILTER_SWITCH_NAME = 'antigrief_players_filter_switch'
 local PLAYERS_INFO_LABEL_NAME = 'antigrief_players_info_label'
@@ -30,7 +32,7 @@ local function ensure_toggle_button(player)
     if not player or not player.valid then
         return
     end
-    if not player.admin then
+    if not Manager.is_staff(player) then
         Gui.destroy_if_exists(player.gui.top, TOGGLE_BUTTON_NAME)
         Gui.destroy_if_exists(player.gui.screen, PANEL_FRAME_NAME)
         return
@@ -45,6 +47,21 @@ local function ensure_toggle_button(player)
         tooltip = { 'fp-antigrief-panel.players-button-tooltip' },
         tags = { action = TOGGLE_ACTION }
     })
+end
+local function staff_actor(p)
+    return p ~= nil and p.valid and Manager.is_staff(p)
+end
+local function admin_actor(p)
+    return p ~= nil and p.valid and p.admin
+end
+local function refuse_staff_target(actor, name)
+    if actor.admin then return false end
+    local target = game.get_player(name)
+    if target and target.valid and Manager.is_staff(target) then
+        actor.print({ 'fp-antigrief-panel.err-staff-protected' })
+        return true
+    end
+    return false
 end
 local function find_by_name(parent, name)
     if not parent or not parent.valid then return nil end
@@ -100,10 +117,12 @@ local function build_player_info(player_name)
     local p = game.get_player(player_name)
     local banned_loc = val_loc(is_banned(player_name))
     local jailed_loc = val_loc(Jail.is_jailed(player_name))
+    local manager_loc = val_loc(Manager.is_manager(player_name))
     if not p then
         return { '',
             { 'fp-antigrief-panel.info-selected', player_name }, '\n',
             { 'fp-antigrief-panel.info-stats', val_loc(nil), val_loc(nil), val_loc(nil) }, '\n',
+            { 'fp-antigrief-panel.info-manager', manager_loc }, '\n',
             { 'fp-antigrief-panel.info-banned', banned_loc }, '\n',
             { 'fp-antigrief-panel.info-jailed', jailed_loc } }
     end
@@ -113,6 +132,7 @@ local function build_player_info(player_name)
             val_loc(p.connected),
             trust_loc(p),
             val_loc(p.admin) }, '\n',
+        { 'fp-antigrief-panel.info-manager', manager_loc }, '\n',
         { 'fp-antigrief-panel.info-banned', banned_loc }, '\n',
         { 'fp-antigrief-panel.info-jailed', jailed_loc } }
 end
@@ -150,7 +170,7 @@ local function refresh_player_info(admin_player)
     local name = (idx > 0) and dropdown.items[idx] or ''
     info_label.caption = build_player_info(name)
 end
-local function build_players_content(parent)
+local function build_players_content(parent, viewer)
     local content = parent.add({ type = 'flow', direction = 'vertical' })
     content.style.padding = 8
     content.style.minimal_width = 600
@@ -213,11 +233,18 @@ local function build_players_content(parent)
         tooltip = { 'fp-antigrief-panel.untrust-tooltip' },
         tags = { action = PLAYERS_UNTRUST_ACTION }
     })
-    Gui.add(actions_row, {
-        type = 'button', caption = { 'fp-antigrief-panel.admin-caption' },
-        tooltip = { 'fp-antigrief-panel.admin-tooltip' },
-        tags = { action = PLAYERS_ADMIN_ACTION }
-    })
+    if viewer.admin then
+        Gui.add(actions_row, {
+            type = 'button', caption = { 'fp-antigrief-panel.admin-caption' },
+            tooltip = { 'fp-antigrief-panel.admin-tooltip' },
+            tags = { action = PLAYERS_ADMIN_ACTION }
+        })
+        Gui.add(actions_row, {
+            type = 'button', caption = { 'fp-antigrief-panel.manager-caption' },
+            tooltip = { 'fp-antigrief-panel.manager-tooltip' },
+            tags = { action = PLAYERS_MANAGER_ACTION }
+        })
+    end
     local info_label = content.add({
         type = 'label',
         name = PLAYERS_INFO_LABEL_NAME,
@@ -326,7 +353,7 @@ local function build_panel(player)
         tooltip = { 'fp-antigrief-panel.close-tooltip' },
         tags = { action = CLOSE_ACTION }
     })
-    for _, def in ipairs(TOGGLES) do
+    for _, def in ipairs(player.admin and TOGGLES or {}) do
         local labels = def.state_labels
         local row = frame.add({ type = 'flow', direction = 'horizontal' })
         row.style.vertical_align = 'center'
@@ -345,14 +372,14 @@ local function build_panel(player)
             tags = { action = def.action }
         })
     end
-    build_players_content(frame)
+    build_players_content(frame, player)
     player.opened = frame
 end
 Gui.on_click(TOGGLE_ACTION, function(_, player)
     if not player or not player.valid then
         return
     end
-    if not player.admin then
+    if not Manager.is_staff(player) then
         player.print({ 'fp-antigrief-panel.admin-only' })
         return
     end
@@ -392,17 +419,18 @@ for _, def in ipairs(TOGGLES) do
     end)
 end
 Gui.on_switch_state_changed(PLAYERS_FILTER_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     refresh_players_tab(admin)
 end)
 Gui.on_selection_state_changed(PLAYERS_DROPDOWN_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     refresh_player_info(admin)
 end)
 Gui.on_click(PLAYERS_BAN_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     local name = get_selected_player_name(admin)
     if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
+    if refuse_staff_target(admin, name) then return end
     game.ban_player(name, string.format(AUDIT.banned_by, admin.name))
     ensure_banned()[name] = true 
     game.print({ 'fp-antigrief-panel.bc-banned', name, admin.name },
@@ -410,7 +438,7 @@ Gui.on_click(PLAYERS_BAN_ACTION, function(_, admin)
     refresh_players_tab(admin)
 end)
 Gui.on_click(PLAYERS_UNBAN_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     local name = get_selected_player_name(admin)
     if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
     game.unban_player(name)
@@ -421,21 +449,22 @@ Gui.on_click(PLAYERS_UNBAN_ACTION, function(_, admin)
     refresh_player_info(admin)
 end)
 Gui.on_click(PLAYERS_JAIL_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     local name = get_selected_player_name(admin)
     if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
+    if refuse_staff_target(admin, name) then return end
     Jail.jail_player(name, string.format(AUDIT.jailed_by, admin.name), admin.name)
     refresh_players_tab(admin)
 end)
 Gui.on_click(PLAYERS_UNJAIL_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     local name = get_selected_player_name(admin)
     if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
     Jail.unjail_player(name)
     refresh_player_info(admin)
 end)
 Gui.on_click(PLAYERS_TRUST_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     local name = get_selected_player_name(admin)
     if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
     local target = game.get_player(name)
@@ -446,18 +475,19 @@ Gui.on_click(PLAYERS_TRUST_ACTION, function(_, admin)
     refresh_player_info(admin)
 end)
 Gui.on_click(PLAYERS_UNTRUST_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not staff_actor(admin) then return end
     local name = get_selected_player_name(admin)
     if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
     local target = game.get_player(name)
     if not target then admin.print({ 'fp-antigrief-panel.err-player-not-found', name }) return end
+    if refuse_staff_target(admin, name) then return end
     Event.raise(Session.events.on_player_untrusted, { player_index = target.index }) 
     game.print({ 'fp-antigrief-panel.bc-untrusted', name, admin.name },
                { color = { r = 1, g = 1, b = 0 } })
     refresh_player_info(admin)
 end)
 Gui.on_click(PLAYERS_ADMIN_ACTION, function(_, admin)
-    if not admin or not admin.valid or not admin.admin then return end
+    if not admin_actor(admin) then return end
     local name = get_selected_player_name(admin)
     if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
     local target = game.get_player(name)
@@ -465,6 +495,18 @@ Gui.on_click(PLAYERS_ADMIN_ACTION, function(_, admin)
     target.admin = not target.admin
     game.print({ target.admin and 'fp-antigrief-panel.bc-promoted' or 'fp-antigrief-panel.bc-demoted', name, admin.name },
                { color = { r = 1, g = 1, b = 0 } })
+    refresh_player_info(admin)
+end)
+Gui.on_click(PLAYERS_MANAGER_ACTION, function(_, admin)
+    if not admin_actor(admin) then return end
+    local name = get_selected_player_name(admin)
+    if not name then admin.print({ 'fp-antigrief-panel.err-no-selection' }) return end
+    local grant = not Manager.is_manager(name)
+    if grant and (Jail.is_jailed(name) or is_banned(name)) then
+        admin.print({ 'fp-antigrief-panel.err-moderated', name })
+        return
+    end
+    Manager.set_manager(name, grant, admin.name)
     refresh_player_info(admin)
 end)
 Event.add(de.on_player_banned, function(event)
@@ -481,17 +523,18 @@ Event.add(de.on_player_joined_game, function(event)
     local player = game.get_player(event.player_index)
     ensure_toggle_button(player)
 end)
-Event.add(de.on_player_promoted, function(event)
+local function on_rank_changed(event)
     local player = game.get_player(event.player_index)
+    if not player or not player.valid then return end
+    Gui.destroy_if_exists(player.gui.screen, PANEL_FRAME_NAME)
     ensure_toggle_button(player)
-end)
-Event.add(de.on_player_demoted, function(event)
-    local player = game.get_player(event.player_index)
-    ensure_toggle_button(player) 
-end)
+end
+Event.add(de.on_player_promoted, on_rank_changed)
+Event.add(de.on_player_demoted, on_rank_changed)
+Event.add(Manager.events.on_manager_changed, on_rank_changed)
 Event.on_configuration_changed(function()
     for _, player in pairs(game.connected_players) do
-        if player.admin then
+        if Manager.is_staff(player) then
             Gui.destroy_if_exists(player.gui.top, TOGGLE_BUTTON_NAME)
             ensure_toggle_button(player)
         end

@@ -1,6 +1,7 @@
 local Event = require 'lib.event'
 local Config = require 'lib.config'
 local Session = require 'lib.sessions'
+local Manager = require 'lib.manager'
 local Constants = require 'constants'
 local DebugLog = require 'lib.debug_log'
 local Tasks = require 'lib.todo_list.tasks'
@@ -48,13 +49,13 @@ function TodoList.view(player)
 end
 function TodoList.can_modify(player, task)
     if not player or not player.valid then return false end
-    if player.admin then return true end
+    if Manager.is_staff(player) then return true end
     if Session.get_trusted_player(player) then return true end
     return task ~= nil and task.created_by == player.name
 end
 function TodoList.can_clean(player)
     if not player or not player.valid then return false end
-    return player.admin or Session.get_trusted_player(player) ~= nil
+    return Manager.is_staff(player) or Session.get_trusted_player(player) ~= nil
 end
 function TodoList.find(id)
     local task, _, _, status = Tasks.find(TodoList.state(), id)

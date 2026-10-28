@@ -2,6 +2,7 @@ local Event = require 'lib.event'
 local Constants = require 'constants'
 local Session = require 'lib.sessions'
 local Jail = require 'lib.jail'
+local Manager = require 'lib.manager'
 local DebugLog = require 'lib.debug_log'
 local UG = Constants.untrusted
 local de = defines.events
@@ -67,7 +68,7 @@ end
 local function route(player, trusted_hint)
     if not player or not player.valid then return end
     if Jail.is_jailed(player.name) then return end
-    local trusted = player.admin
+    local trusted = Manager.is_staff(player)
     if not trusted then
         if trusted_hint ~= nil then
             trusted = trusted_hint
@@ -101,6 +102,9 @@ Event.add(de.on_player_promoted, function(event)
     route(game.get_player(event.player_index), nil)
 end)
 Event.add(de.on_player_demoted, function(event)
+    route(game.get_player(event.player_index), nil)
+end)
+Event.add(Manager.events.on_manager_changed, function(event)
     route(game.get_player(event.player_index), nil)
 end)
 Jail.set_unjail_group_resolver(function(player) route(player, nil) end)

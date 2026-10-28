@@ -26,6 +26,8 @@ local jail_tag = '[JAIL]'
 local unjail_tag = '[UNJAIL]'
 local trust_tag = '[TRUST]'
 local untrust_tag = '[UNTRUST]'
+local manager_tag = '[MANAGER]'
+local unmanager_tag = '[UNMANAGER]'
 Public.raw_print = raw_print
 local function output_data(primary, secondary)
     assert(primary, 'output_data - primary must be provided')
@@ -151,6 +153,15 @@ local function notify_trust_change(name, trusted, source)
         output_data(concat { untrust_tag, '{', 'name:"', name, '"}' })
     end
 end
+local function notify_manager_change(name, on, source)
+    name = single_escape(name)
+    if on then
+        source = single_escape(source or '')
+        output_data(concat { manager_tag, '{', 'name:"', name, '",source:"', source, '"}' })
+    else
+        output_data(concat { unmanager_tag, '{', 'name:"', name, '"}' })
+    end
+end
 local function validate_arguments(data_set, key, callback_token)
     if type(data_set) ~= 'string' then error('data_set must be a string', 3) end
     if type(key) ~= 'string' then error('key must be a string', 3) end
@@ -230,6 +241,7 @@ Public.raise_data_set = data_set_changed
 Public.log_antigrief_data = log_antigrief_data
 Public.notify_jail_change = notify_jail_change
 Public.notify_trust_change = notify_trust_change
+Public.notify_manager_change = notify_manager_change
 Public.output_data = output_data
 local function command_handler(command_name, callback, ...)
     local chunk

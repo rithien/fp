@@ -118,7 +118,7 @@ local function on_console_chat(event)
     local message = event.message
     local message_length = string.len(message) >= 500
     if message_length then
-        if this.enable_jail_on_long_texts and not player.admin then
+        if this.enable_jail_on_long_texts and not Core.is_staff(player) then
             if not this.players_warn_on_long_texts[player.index] then
                 this.players_warn_on_long_texts[player.index] = 1
                 Task.set_timeout_in_ticks(AG.long_text_warn_ttl_ticks, clear_players_warn_on_long_texts, { player_index = player.index })
@@ -221,7 +221,7 @@ local function on_player_deconstructed_area(event)
     if not player or not player.valid then
         return
     end
-    if player.admin then
+    if Core.is_staff(player) then
         return
     end
     local area = event.area

@@ -40,7 +40,7 @@ local function on_player_ammo_inventory_changed(event)
     if not player or not player.valid then
         return
     end
-    if player.admin then
+    if Core.is_staff(player) then
         return
     end
     if Session.get_trusted_player(player) or this.do_not_check_trusted then
@@ -72,7 +72,7 @@ local function on_built_entity(event)
         if not player or not player.valid then
             return
         end
-        if player.admin then
+        if Core.is_staff(player) then
             return
         end
         if Session.get_trusted_player(player) or this.do_not_check_trusted then
@@ -88,7 +88,7 @@ end
 local function on_player_used_capsule(event)
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end 
-    if player.admin then 
+    if Core.is_staff(player) then 
         return
     end
     if Session.get_trusted_player(player) or this.do_not_check_trusted then
@@ -148,7 +148,7 @@ local function on_player_cursor_stack_changed(event)
     if not player or not player.valid then
         return
     end
-    if player.admin then
+    if Core.is_staff(player) then
         return
     end
     if Session.get_trusted_player(player) or this.do_not_check_trusted then
@@ -179,7 +179,7 @@ local function on_player_driving_changed_state(event)
     if not player.driving then
         return 
     end
-    if player.admin then
+    if Core.is_staff(player) then
         return
     end
     if Session.get_trusted_player(player) or this.do_not_check_trusted then
@@ -200,7 +200,7 @@ local function is_ammo_blocked_for(player, item_name)
     if not ammo_names[item_name] then
         return false
     end
-    if player.admin then
+    if Core.is_staff(player) then
         return false
     end
     if not this then
