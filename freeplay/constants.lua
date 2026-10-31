@@ -50,6 +50,7 @@ Constants.untrusted = {
 }
 Constants.spawn_logo = {
     sprite = 'file/img/world/sign.png',
+    sprite_polska = 'file/img/world/sign-polska.png',
     scale = 0.5306,
     render_layer = 'object',
     position_offset = { x = 9, y = 0 },

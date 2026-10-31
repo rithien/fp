@@ -16,8 +16,6 @@ local EQUIPMENT = {
     'exoskeleton-equipment',
     'exoskeleton-equipment',
     'exoskeleton-equipment',
-    'exoskeleton-equipment',
-    'exoskeleton-equipment',
     'energy-shield-mk2-equipment',
     'energy-shield-mk2-equipment',
     'personal-roboport-mk2-equipment',

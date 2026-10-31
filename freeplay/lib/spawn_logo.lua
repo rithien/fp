@@ -3,6 +3,7 @@ local Constants = require 'constants'
 local Config = require 'lib.config'
 local DebugLog = require 'lib.debug_log'
 local TOGGLE_ID = 'spawn_logo'
+local VARIANT_TOGGLE_ID = 'spawn_logo_polska'
 local RENDER_VERSION = 11
 local SWEEP_INTERVAL = 600
 local RENDER_LAYER_NAMES = {}
@@ -49,6 +50,14 @@ end
 local function is_enabled()
     return Config.is_enabled(TOGGLE_ID)
 end
+local function effective_sprite()
+    local cfg = Constants.spawn_logo
+    if Config.is_enabled(VARIANT_TOGGLE_ID) and cfg.sprite_polska then
+        return cfg.sprite_polska
+    end
+    return cfg.sprite
+end
+Public.effective_sprite = effective_sprite
 local function is_valid_render_layer(name)
     if type(name) ~= 'string' then return false end
     if RENDER_LAYER_NAMES[name] then return true end
@@ -168,7 +177,7 @@ local function draw(surface)
     local entry = { sprite = nil, light = nil, texts = {} }
     local ok, sprite = pcall(function()
         return rendering.draw_sprite({
-            sprite = cfg.sprite,
+            sprite = effective_sprite(),
             render_layer = layer,
             target = pos,
             x_scale = cfg.scale,
@@ -178,7 +187,7 @@ local function draw(surface)
     end)
     if not ok or not sprite then
         DebugLog.log('[spawn_logo] draw — sprite "%s" (layer %s) niegotowy na "%s" (early lifecycle lub odrzucona warstwa), ponowię przy następnym sweepie',
-            tostring(cfg.sprite), tostring(layer), surface.name)
+            tostring(effective_sprite()), tostring(layer), surface.name)
         return pos
     end
     entry.sprite = sprite
@@ -238,9 +247,10 @@ local function cleanup_legacy_info_panel()
 end
 local function ensure_surface(surface)
     local entry = storage.spawn_logo.surfaces[surface.index]
-    if entry and entry.sprite and entry.sprite.valid then
+    if entry and entry.sprite and entry.sprite.valid and entry.sprite.sprite == effective_sprite() then
         return 
     end
+    destroy_entry(surface.index)
     draw(surface)
 end
 local function ensure()
@@ -326,8 +336,9 @@ Commands.new('spawnlogo', { 'fp-commands.spawnlogo-help' })
         local eff_layer, layer_source = effective_render_layer()
         local off = cfg.position_offset or { x = 0, y = 0 }
         local lines = {
-            string.format('[spawn_logo] toggle=%s sprite="%s" scale=%s layer=%s (%s) offset=(%s,%s) excluded=%s',
-                tostring(is_enabled()), tostring(cfg.sprite), tostring(cfg.scale),
+            string.format('[spawn_logo] toggle=%s sprite="%s" variant=%s scale=%s layer=%s (%s) offset=(%s,%s) excluded=%s',
+                tostring(is_enabled()), tostring(effective_sprite()),
+                Config.is_enabled(VARIANT_TOGGLE_ID) and 'polska' or 'rithien', tostring(cfg.scale),
                 tostring(eff_layer), layer_source, tostring(off.x or 0), tostring(off.y or 0), excluded_planet_list()),
         }
         local surfaces = target_surfaces()

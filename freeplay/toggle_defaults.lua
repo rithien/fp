@@ -19,5 +19,6 @@ return {
     bp_params        = false,   
     turret_filler    = true,   
     spawn_logo       = true,   
+    spawn_logo_polska = false, 
     debug_log        = false,  
 }

@@ -1,6 +1,7 @@
 local Event = require 'lib.event'
 local Config = require 'lib.config'
 local Queue = require 'lib.circuit_highlight.queue'
+local DebugLog = require 'lib.debug_log'
 local de = defines.events
 local TOGGLE_ID = 'circuit_highlight'
 local RED = { 1, 0, 0 }
@@ -82,6 +83,9 @@ end
 local function is_entity_valid(entity)
     return entity and entity.valid and entity.unit_number and entity.type ~= 'entity-ghost'
 end
+local function is_wired(connection)
+    return connection.origin ~= defines.wire_origin.radars
+end
 local function get_connected_networks(entity)
     if not is_entity_valid(entity) then return {} end
     local network_ids = {}
@@ -96,23 +100,28 @@ end
 local function get_directly_connected_entities(entity, network_id)
     local entities = { length = 0 }
     local networks = { length = 0 }
+    local radar_links = 0
     for connector_type, connector in pairs(entity.get_wire_connectors()) do
         local network = entity.get_circuit_network(connector_type)
         if network then
             if not network_id or network.network_id == network_id then
                 for _, connection in ipairs(connector.connections) do
-                    entities[entities.length] = connection.target.owner
-                    entities.length = entities.length + 1
+                    if is_wired(connection) then
+                        entities[entities.length] = connection.target.owner
+                        entities.length = entities.length + 1
+                    else
+                        radar_links = radar_links + 1
+                    end
                 end
                 networks[networks.length] = network.network_id
                 networks.length = networks.length + 1
             end
         end
     end
-    return entities, networks
+    return entities, networks, radar_links
 end
 local function get_connected_entities(entity, network_id)
-    if not is_entity_valid(entity) then return {}, {} end
+    if not is_entity_valid(entity) then return {}, {}, 0 end
     local frontier = { entity }
     local added_ids = { [entity.unit_number] = true }
     local added_entities = { [entity] = true }
@@ -126,8 +135,10 @@ local function get_connected_entities(entity, network_id)
     end
     local i = 1
     local last = 1
+    local radar_links = 0
     while i <= MAX_ENTITIES and frontier[i] do
-        local directly, new_networks = get_directly_connected_entities(frontier[i], network_id)
+        local directly, new_networks, skipped = get_directly_connected_entities(frontier[i], network_id)
+        radar_links = radar_links + skipped
         for j = 0, directly.length - 1 do
             local other = directly[j]
             if other and other.unit_number and not added_ids[other.unit_number] then
@@ -143,7 +154,21 @@ local function get_connected_entities(entity, network_id)
         frontier[i] = nil
         i = i + 1
     end
-    return added_entities, networks
+    return added_entities, networks, radar_links
+end
+function Public.collect_network_entities(entity)
+    local by_unit, count, radar_links = {}, 0, 0
+    for network_id in pairs(get_connected_networks(entity)) do
+        local entities, _, skipped = get_connected_entities(entity, network_id)
+        radar_links = radar_links + skipped
+        for e in pairs(entities) do
+            if e.valid and e.unit_number and not by_unit[e.unit_number] then
+                by_unit[e.unit_number] = e
+                count = count + 1
+            end
+        end
+    end
+    return by_unit, count, radar_links
 end
 local function get_color_and_offset(wire_type)
     local color, offset
@@ -237,9 +262,11 @@ local function visualize_entity(player, entity, in_network)
             local network_id = network.network_id
             if in_network == nil or in_network(network_id) then
                 for _, connection in ipairs(connector.connections) do
-                    local other_connector = connection.target
-                    draw_connection(player, entity, other_connector.owner, connector.wire_type, network_id,
-                        connector_type, other_connector.wire_connector_id, rendered, net_offsets)
+                    if is_wired(connection) then
+                        local other_connector = connection.target
+                        draw_connection(player, entity, other_connector.owner, connector.wire_type, network_id,
+                            connector_type, other_connector.wire_connector_id, rendered, net_offsets)
+                    end
                 end
             end
         end
@@ -257,17 +284,24 @@ local function on_selected(event)
     local connected_networks = get_connected_networks(selected)
     local pd = pdata(index)
     local any = false
+    local network_count, queued, radar_links = 0, 0, 0
     for network_id in pairs(connected_networks) do
         pd.networks[network_id] = true
         any = true
-        local entities = get_connected_entities(selected, network_id)
+        network_count = network_count + 1
+        local entities, _, skipped = get_connected_entities(selected, network_id)
+        radar_links = radar_links + skipped
         for entity in pairs(entities) do
             Queue.push(pd.queue, entity, entity.unit_number)
+            queued = queued + 1
         end
     end
     if not any then
         pd.networks = {}
+        return
     end
+    DebugLog.log('[circuit_highlight] player %d: selected %s, networks=%d, queued=%d, radar_links_skipped=%d',
+        index, selected.name, network_count, queued, radar_links)
 end
 local function drain()
     local ch = storage.circuit_highlight

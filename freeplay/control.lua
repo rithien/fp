@@ -77,6 +77,7 @@ _G.FpModules = {
     constants = require 'constants',
     config = require 'lib.config',
     spawn_logo = require 'lib.spawn_logo',
+    circuit_highlight = require 'lib.circuit_highlight',
     crash_site = require 'crash-site',
     jail = require 'lib.jail',
     show_entity_info = require 'lib.show_entity_info',
