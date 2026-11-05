@@ -36,13 +36,13 @@ function Task.set_timeout_in_ticks(ticks, func_token, params)
     local time = game.tick + ticks
     local cb = { time = time, func_token = func_token, params = params }
     local cbs = storage.task_callbacks
-    for i = 1, #cbs do
-        if cbs[i].time > time then
-            table.insert(cbs, i, cb)
+    for i = #cbs, 1, -1 do
+        if cbs[i].time <= time then
+            table.insert(cbs, i + 1, cb)
             return
         end
     end
-    cbs[#cbs + 1] = cb
+    table.insert(cbs, 1, cb)
 end
 Event.on_init(ensure_init)
 Event.on_configuration_changed(ensure_init)

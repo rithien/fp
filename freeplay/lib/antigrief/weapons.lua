@@ -85,63 +85,53 @@ local function on_built_entity(event)
         player.print({ 'fp-antigrief.no-blueprint' }, { color = { r = 0.22, g = 0.99, b = 0.99 } })
     end
 end
+local function log_capsule(player, msg, severity, position)
+    if is_logging_muted_for(player) then return end 
+    local formatted = FancyTime.short_fancy_time(abs(floor(game.tick / 60)))
+    local str = '[' .. formatted .. '] ' .. msg .. ' at X:' .. floor(position.x) .. ' Y:' .. floor(position.y)
+        .. ' ' .. Core.surface_label(player.surface)
+    Server.log_antigrief_data('capsule', str, severity, player.name)
+end
 local function on_player_used_capsule(event)
     local player = game.get_player(event.player_index)
     if not player or not player.valid then return end 
-    if Core.is_staff(player) then 
-        return
-    end
-    if Session.get_trusted_player(player) or this.do_not_check_trusted then
-        return 
-    end
     local item = event.item
-    if not item then
-        return
-    end
+    if not item or not ammo_names[item.name] then return end
     local name = item.name
     local position = event.position
+    if Core.is_staff(player) or Session.get_trusted_player(player) or this.do_not_check_trusted then
+        log_capsule(player, player.name .. ' used ' .. name, 'info', position)
+        return
+    end
     local x, y = position.x, position.y
     local surface = player.surface
-    if ammo_names[name] then
-        local msg
-        local severity = 'info'
-        if this.enable_capsule_warning then
-            if surface.count_entities_filtered({ force = 'enemy', area = { { x - 10, y - 10 }, { x + 10, y + 10 } }, limit = 1 }) > 0 then
-                return
-            end
-            local count = 0
-            local entities = player.surface.find_entities_filtered { force = player.force, area = { { x - 5, y - 5 }, { x + 5, y + 5 } } }
-            for i = 1, #entities do
-                local e = entities[i]
-                local entity_name = e.name
-                if entity_name ~= name and entity_name ~= 'entity-ghost' then
-                    count = count + 1
-                end
-            end
-            if count <= this.capsule_bomb_threshold then
-                return
-            end
-            local action_prefix = '[Capsule]'
-            msg = format(AUDIT.capsule_damage, player.name, get_entities(name, entities), name)
-            local ban_msg = format(AUDIT.capsule_ban, get_entities(name, entities), name)
-            do_action(player, action_prefix, msg, ban_msg, true)
-            severity = 'block'
-        else
-            msg = player.name .. ' used ' .. name
+    local msg
+    local severity = 'info'
+    if this.enable_capsule_warning then
+        if surface.count_entities_filtered({ force = 'enemy', area = { { x - 10, y - 10 }, { x + 10, y + 10 } }, limit = 1 }) > 0 then
+            return
         end
-        if is_logging_muted_for(player) then return end
-        local t = abs(floor((game.tick) / 60))
-        local formatted = FancyTime.short_fancy_time(t)
-        local str = '[' .. formatted .. '] '
-        str = str .. msg
-        str = str .. ' at X:'
-        str = str .. floor(position.x)
-        str = str .. ' Y:'
-        str = str .. floor(position.y)
-        str = str .. ' '
-        str = str .. Core.surface_label(player.surface)
-        Server.log_antigrief_data('capsule', str, severity, player.name)
+        local count = 0
+        local entities = player.surface.find_entities_filtered { force = player.force, area = { { x - 5, y - 5 }, { x + 5, y + 5 } } }
+        for i = 1, #entities do
+            local e = entities[i]
+            local entity_name = e.name
+            if entity_name ~= name and entity_name ~= 'entity-ghost' then
+                count = count + 1
+            end
+        end
+        if count <= this.capsule_bomb_threshold then
+            return
+        end
+        local action_prefix = '[Capsule]'
+        msg = format(AUDIT.capsule_damage, player.name, get_entities(name, entities), name)
+        local ban_msg = format(AUDIT.capsule_ban, get_entities(name, entities), name)
+        do_action(player, action_prefix, msg, ban_msg, true)
+        severity = 'block'
+    else
+        msg = player.name .. ' used ' .. name
     end
+    log_capsule(player, msg, severity, position)
 end
 local function on_player_cursor_stack_changed(event)
     local player = game.get_player(event.player_index)

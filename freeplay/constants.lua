@@ -106,5 +106,7 @@ Constants.todo_list = {
     window_max_height = 600,  
     max_title_len     = 200,  
     max_desc_len      = 1000, 
+    max_tasks         = 200,  
+    max_tasks_untrusted = 10, 
 }
 return Constants

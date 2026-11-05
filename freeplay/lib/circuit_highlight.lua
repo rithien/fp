@@ -12,6 +12,7 @@ local NODE_RADIUS = 0.125
 local LINE_WIDTH = 2         
 local ENTITIES_PER_TICK = 200 
 local MAX_ENTITIES = 1000    
+local REDRAW_TICKS = 60      
 local INPUT_OUTPUT_COMBINATORS = {
     ['arithmetic-combinator'] = true,
     ['decider-combinator'] = true,
@@ -273,16 +274,27 @@ local function visualize_entity(player, entity, in_network)
     end
     render_nodes(player, entity, net_offsets, rendered)
 end
+local function same_networks(a, b)
+    for id in pairs(a) do if not b[id] then return false end end
+    for id in pairs(b) do if not a[id] then return false end end
+    return next(a) ~= nil
+end
 local function on_selected(event)
     local index = event.player_index
-    clear_player(index)
-    if not Public.is_active_for(index) then return end
+    local active = Public.is_active_for(index)
     local player = game.get_player(index)
-    if not player then return end
-    local selected = player.selected
-    if not is_entity_valid(selected) then return end
-    local connected_networks = get_connected_networks(selected)
+    local selected = player and player.selected
+    local connected_networks = active and is_entity_valid(selected) and get_connected_networks(selected) or {}
+    local ch = storage.circuit_highlight
+    local prev = ch and ch.players and ch.players[index]
+    if active and prev and prev.drawn_tick and game.tick - prev.drawn_tick < REDRAW_TICKS
+        and same_networks(prev.networks, connected_networks) then
+        return
+    end
+    clear_player(index)
+    if not active or not is_entity_valid(selected) then return end
     local pd = pdata(index)
+    pd.drawn_tick = game.tick
     local any = false
     local network_count, queued, radar_links = 0, 0, 0
     for network_id in pairs(connected_networks) do

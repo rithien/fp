@@ -23,46 +23,9 @@ function Public.set_admin_temp_trust(value)
     log_msg('[Antigrief]', this.admin_temp_trust and 'admin-temp-trust enabled' or 'admin-temp-trust disabled')
     AdminPresence.reevaluate()
 end
-function Public.do_not_check_trusted(value)
-    this.do_not_check_trusted = value or false
-    return this.do_not_check_trusted
-end
 function Public.set_capsule_bomb_threshold(value)
     this.capsule_bomb_threshold = value or 1500
     return this.capsule_bomb_threshold
-end
-function Public.set_max_count_decon(value)
-    this.max_count_decon = value or 1500
-    return this.max_count_decon
-end
-function Public.enable_capsule_warning(value)
-    this.enable_capsule_warning = value or false
-    return this.enable_capsule_warning
-end
-function Public.enable_capsule_cursor_warning(value)
-    this.enable_capsule_cursor_warning = value or false
-    return this.enable_capsule_cursor_warning
-end
-function Public.enable_jail(value)
-    this.enable_jail = value or false
-    return this.enable_jail
-end
-function Public.enable_jail_when_decon(value)
-    this.enable_jail_when_decon = value or false
-    return this.enable_jail_when_decon
-end
-function Public.enable_jail_on_long_texts(value)
-    this.enable_jail_on_long_texts = value or false
-    return this.enable_jail_on_long_texts
-end
-function Public.decon_surface_blacklist(value)
-    this.decon_surface_blacklist = value or 'nauvis'
-    return this.decon_surface_blacklist
-end
-function Public.filtered_types_on_decon(tbl)
-    if tbl then
-        this.filtered_types_on_decon = tbl
-    end
 end
 function Public.damage_entity_threshold(value)
     if value then
@@ -103,6 +66,8 @@ Event.add(de.on_entity_damaged, Combat.on_entity_damaged)
 Event.add(de.on_built_entity, Weapons.on_built_entity)
 Event.add(de.on_built_entity, Logging.on_built_entity)
 Event.add(de.on_gui_opened, GuiProtection.on_gui_opened)
+Event.add(de.on_gui_closed, GuiProtection.on_gui_closed)
+Event.add(de.on_player_left_game, GuiProtection.on_player_left_game)
 Event.add(de.on_entity_settings_pasted, GuiProtection.on_entity_settings_pasted)
 Event.add(de.on_marked_for_deconstruction, EntityProtection.on_marked_for_deconstruction)
 Event.add(de.on_pre_ghost_deconstructed, EntityProtection.on_pre_ghost_deconstructed)

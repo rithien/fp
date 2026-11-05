@@ -20,7 +20,6 @@ local discord_antigrief_embed_parsed_tag = '[DISCORD-ANTIGRIEF-EMBED-PARSED]'
 local data_set_tag = '[DATA-SET]'
 local data_get_tag = '[DATA-GET]'
 local data_get_and_print_tag = '[DATA-GET-AND-PRINT]'
-local data_get_all_tag = '[DATA-GET-ALL]'
 local antigrief_tag = '[ANTIGRIEF-LOG]'
 local jail_tag = '[JAIL]'
 local unjail_tag = '[UNJAIL]'
@@ -199,12 +198,6 @@ end
 function Public.try_get_data_and_print(data_set, key, to_print, callback_token)
     validate_arguments(data_set, key, callback_token)
     send_try_get_data_and_print(data_set, key, to_print, callback_token)
-end
-function Public.try_get_all_data(data_set, callback_token)
-    if type(data_set) ~= 'string' then error('data_set must be a string', 2) end
-    if type(callback_token) ~= 'number' then error('callback_token must be a number', 2) end
-    data_set = single_escape(data_set)
-    output_data(concat { data_get_all_tag, callback_token, ' {', 'data_set:"', data_set, '"}' })
 end
 local function data_set_changed(data)
     local handlers = data_set_handlers[data.data_set]

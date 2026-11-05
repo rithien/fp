@@ -464,7 +464,7 @@ local function flush_robot_mining_logs()
     end
 end
 local function on_robot_mined_entity(event)
-    bind_storage() 
+    if not (this and this.robot_mining_pending) then bind_storage() end
     local entity = event.entity
     if not entity or not entity.valid then
         return
@@ -473,62 +473,56 @@ local function on_robot_mined_entity(event)
     if not robot or not robot.valid then
         return
     end
-    local net_point = robot.logistic_network
-    if net_point and net_point.storage_points then
-        for _, point in pairs(net_point.storage_points) do
-            if point then
-                if point.owner and point.owner.valid and point.owner.name == 'character' then
-                    local player = point.owner.player
-                    if not player or not player.valid then
-                        return
-                    end
-                    if is_logging_muted_for(player) then return end
-                    if not this.robot_mining_pending[player.index] then
-                        this.robot_mining_pending[player.index] = {}
-                    end
-                    local clusters = this.robot_mining_pending[player.index]
-                    local current_tick = game.tick
-                    local distance_threshold = AG.robot_mining_cluster_distance_threshold
-                    local time_threshold = AG.robot_mining_cluster_time_threshold_ticks
-                    local entity_pos = { x = entity.position.x, y = entity.position.y }
-                    local entity_surface = entity.surface.index
-                    local found_cluster = nil
-                    for _, cluster in pairs(clusters) do
-                        if cluster.surface_index == entity_surface then
-                            local distance = get_distance(cluster.position, entity_pos)
-                            local time_diff = current_tick - cluster.last_tick
-                            if distance <= distance_threshold and time_diff <= time_threshold then
-                                found_cluster = cluster
-                                break
-                            end
-                        end
-                    end
-                    if not found_cluster then
-                        local cluster_id = #clusters + 1
-                        found_cluster =
-                        {
-                            entities = {},
-                            total_count = 0,
-                            position = { x = entity.position.x, y = entity.position.y },
-                            surface_index = entity_surface,
-                            first_tick = current_tick,
-                            last_tick = current_tick
-                        }
-                        clusters[cluster_id] = found_cluster
-                    end
-                    if not found_cluster.entities[entity.name] then
-                        found_cluster.entities[entity.name] = 0
-                    end
-                    found_cluster.entities[entity.name] = found_cluster.entities[entity.name] + 1
-                    found_cluster.total_count = found_cluster.total_count + 1
-                    found_cluster.last_tick = current_tick
-                    if found_cluster.total_count >= AG.robot_mining_cluster_max_count then
-                        flush_robot_mining_logs()
-                    end
-                    return
-                end
+    local net = robot.logistic_network
+    local cell = net and net.valid and net.find_cell_closest_to(robot.position)
+    local owner = cell and cell.valid and cell.owner
+    if not (owner and owner.valid and owner.type == 'character') then return end
+    local player = owner.player
+    if not player or not player.valid then
+        return
+    end
+    if is_logging_muted_for(player) then return end
+    if not this.robot_mining_pending[player.index] then
+        this.robot_mining_pending[player.index] = {}
+    end
+    local clusters = this.robot_mining_pending[player.index]
+    local current_tick = game.tick
+    local distance_threshold = AG.robot_mining_cluster_distance_threshold
+    local time_threshold = AG.robot_mining_cluster_time_threshold_ticks
+    local entity_pos = { x = entity.position.x, y = entity.position.y }
+    local entity_surface = entity.surface.index
+    local found_cluster = nil
+    for _, cluster in pairs(clusters) do
+        if cluster.surface_index == entity_surface then
+            local distance = get_distance(cluster.position, entity_pos)
+            local time_diff = current_tick - cluster.last_tick
+            if distance <= distance_threshold and time_diff <= time_threshold then
+                found_cluster = cluster
+                break
             end
         end
+    end
+    if not found_cluster then
+        local cluster_id = #clusters + 1
+        found_cluster =
+        {
+            entities = {},
+            total_count = 0,
+            position = { x = entity.position.x, y = entity.position.y },
+            surface_index = entity_surface,
+            first_tick = current_tick,
+            last_tick = current_tick
+        }
+        clusters[cluster_id] = found_cluster
+    end
+    if not found_cluster.entities[entity.name] then
+        found_cluster.entities[entity.name] = 0
+    end
+    found_cluster.entities[entity.name] = found_cluster.entities[entity.name] + 1
+    found_cluster.total_count = found_cluster.total_count + 1
+    found_cluster.last_tick = current_tick
+    if found_cluster.total_count >= AG.robot_mining_cluster_max_count then
+        flush_robot_mining_logs()
     end
 end
 Logging.on_player_joined_game = on_player_joined_game

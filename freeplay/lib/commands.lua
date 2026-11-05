@@ -1,4 +1,3 @@
-local Session = require 'lib.sessions'
 local Commands = {}
 local function reply(cmd, msg)
     if cmd.player_index then
@@ -12,10 +11,6 @@ local Builder = {}
 Builder.__index = Builder
 function Builder:require_admin()
     self.admin_only = true
-    return self
-end
-function Builder:require_trusted()
-    self.trusted_only = true
     return self
 end
 function Builder:server_only()
@@ -41,10 +36,6 @@ function Builder:callback(fn)
             if not player or not player.valid then return end
             if self_ref.admin_only and not player.admin then
                 player.print({ 'fp-commands.err-admin-only', self_ref.name })
-                return
-            end
-            if self_ref.trusted_only and not Session.get_trusted_player(player) and not player.admin then
-                player.print({ 'fp-commands.err-trusted-only', self_ref.name })
                 return
             end
         end
@@ -92,7 +83,6 @@ function Commands.new(name, help)
         name = name,
         help = help,
         admin_only = false,
-        trusted_only = false,
         server_only_flag = false,
         parameters = nil,
         callback_fn = nil

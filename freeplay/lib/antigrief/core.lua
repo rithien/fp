@@ -45,6 +45,7 @@ local function get_defaults()
         players_warned_hard_block = {},
         pending_mine_blocks = {},
         player_action_pending = {},
+        gui_owner = {},
     }
 end
 local this

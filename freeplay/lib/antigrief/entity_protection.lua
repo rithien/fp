@@ -26,25 +26,14 @@ local bind_storage = Core.bind_storage
 local log_admin_override = Core.log_admin_override
 local is_foreign_same_force = Core.is_foreign_same_force
 local log_player_action = Core.log_player_action
+local place_restore_ghost 
 local create_ghost_token =
     Token.register_named('antigrief.create_ghost',
         function (event)
-            local player_index = event.player_index
-            local player = game.get_player(player_index)
-            if not player or not player.valid then
-                return
-            end
-            local ghost = event.ghost
-            if not ghost or not ghost.valid then
-                return
-            end
-            local position = event.position
             local surface = event.surface_index and game.get_surface(event.surface_index) or nil
-            if not (surface and surface.valid) then
-                surface = player.surface
+            if event.pending and surface and surface.valid then
+                place_restore_ghost(surface, event.pending)
             end
-            ghost.clone({ position = position, force = player.force, surface = surface, create_build_effect_smoke = false })
-            ghost.destroy()
         end
     )
 local function on_marked_for_deconstruction(event)
@@ -70,6 +59,30 @@ local function on_marked_for_deconstruction(event)
     LeaveReport.note_removed(player, entity)
     ActionLog.queue(player, 'decon', entity)
 end
+local function capture_ghost_state(ghost)
+    local snapshot = {
+        name = ghost.ghost_name,
+        position = { x = ghost.position.x, y = ghost.position.y },
+        direction = ghost.direction,
+        force = ghost.force.name,
+        last_user_name = ghost.last_user and ghost.last_user.valid and ghost.last_user.name or nil,
+        quality = ghost.quality and ghost.quality.name or nil,
+    }
+    local gtype = ghost.ghost_type
+    if gtype == 'underground-belt' then
+        pcall(function() snapshot.belt_side = ghost.belt_to_ground_type end)
+    elseif gtype == 'loader' or gtype == 'loader-1x1' then
+        pcall(function() snapshot.belt_side = ghost.loader_type end)
+    end
+    local ok, recipe, quality = pcall(function() return ghost.get_recipe() end)
+    if ok and recipe then
+        snapshot.recipe_name = recipe.name
+        snapshot.recipe_quality = quality and quality.name or nil
+    end
+    pcall(function() snapshot.insert_plan = ghost.insert_plan end) 
+    pcall(function() snapshot.tags = ghost.tags end)
+    return snapshot
+end
 local function on_pre_ghost_deconstructed(event)
     bind_storage() 
     if not event.player_index then return end
@@ -82,11 +95,8 @@ local function on_pre_ghost_deconstructed(event)
             log_admin_override(player, format(AUDIT.override_ghost, ghost.ghost_name or ghost.name, get_owner_name(ghost)))
             return
         end
-        if not game.surfaces.gulag then
-            game.create_surface('gulag', { width = 32, height = 32 })
-        end
-        local new_ghost = ghost.clone({ position = { x = 0, y = 0 }, force = player.force, surface = game.surfaces.gulag, create_build_effect_smoke = false })
-        Task.set_timeout_in_ticks(AG.create_ghost_delay_ticks, create_ghost_token, { player_index = player.index, ghost = new_ghost, position = ghost.position, surface_index = ghost.surface.index })
+        Task.set_timeout_in_ticks(AG.create_ghost_delay_ticks, create_ghost_token,
+            { pending = capture_ghost_state(ghost), surface_index = ghost.surface.index })
         hard_block_action(player, 'deconstruct',
             format(AUDIT.deconstruct_ghost, ghost.ghost_name or ghost.name, get_owner_name(ghost)))
         return
@@ -247,7 +257,7 @@ local function clear_recreate_collision(surface, pending)
         end
     end
 end
-local function place_restore_ghost(surface, pending)
+function place_restore_ghost(surface, pending)
     local existing = surface.find_entity('entity-ghost', pending.position)
     if existing and existing.valid and existing.ghost_name == pending.name then return existing end
     local owner = pending.last_user_name and game.get_player(pending.last_user_name) or nil
@@ -257,6 +267,7 @@ local function place_restore_ghost(surface, pending)
         position = pending.position,
         direction = pending.direction,
         type = pending.belt_side, 
+        quality = pending.quality,
         force = pending.force,
         player = owner,
         raise_built = false,
@@ -266,6 +277,8 @@ local function place_restore_ghost(surface, pending)
         pcall(function() ghost.set_recipe(pending.recipe_name, pending.recipe_quality) end)
     end
     apply_config_to_ghost(ghost, pending)
+    if pending.insert_plan then pcall(function() ghost.insert_plan = pending.insert_plan end) end
+    if pending.tags then pcall(function() ghost.tags = pending.tags end) end
     return ghost
 end
 local function notify_online_admins(localised_msg)
@@ -553,6 +566,7 @@ EntityProtection.recreate_from_snapshot = recreate_from_snapshot
 EntityProtection.restore_entity = restore_entity
 EntityProtection.clear_recreate_collision = clear_recreate_collision
 EntityProtection.place_restore_ghost = place_restore_ghost
+EntityProtection.capture_ghost_state = capture_ghost_state
 EntityProtection.notify_online_admins = notify_online_admins
 EntityProtection.on_player_mined_entity = on_player_mined_entity
 EntityProtection.capture_main_contents = capture_main_contents

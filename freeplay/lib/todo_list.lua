@@ -92,7 +92,23 @@ function TodoList.add(player, title, description, assignee)
     if not player or not player.valid then return false, nil end
     local clean_title, err = sanitize_title(title)
     if err then return false, err end
-    local task = Tasks.add(TodoList.state(), {
+    local state = TodoList.state()
+    local limits = Constants.todo_list
+    if #state.open + #state.done >= limits.max_tasks then
+        return false, 'fp-todo-list.limit-total'
+    end
+    if not (Manager.is_staff(player) or Session.get_trusted_player(player)) then
+        local own = 0
+        for _, list in ipairs({ state.open, state.done }) do
+            for _, task in ipairs(list) do
+                if task.created_by == player.name then own = own + 1 end
+            end
+        end
+        if own >= limits.max_tasks_untrusted then
+            return false, 'fp-todo-list.limit-own'
+        end
+    end
+    local task = Tasks.add(state, {
         title = clean_title,
         description = sanitize_description(description),
         assignee = sanitize_assignee(assignee),

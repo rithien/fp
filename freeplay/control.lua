@@ -82,6 +82,9 @@ _G.FpModules = {
     jail = require 'lib.jail',
     show_entity_info = require 'lib.show_entity_info',
     antigrief_core = require 'lib.antigrief.core',
+    antigrief_entity_protection = require 'lib.antigrief.entity_protection',
+    todo_list = require 'lib.todo_list',
+    task = require 'lib.task',
     admin_presence = require 'lib.antigrief.admin_presence',
     manager = require 'lib.manager',
 }
